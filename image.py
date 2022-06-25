@@ -83,30 +83,24 @@ class Stack:
 		    Grayscale copy of the initial stack, now also the last element in the `stacks` list.
 		"""
 
+        # Select which stack to process
+        to_process = self.stacks[-1] if append else self.stack
+
+        # Assume the images are RGB
+        err_msg = f'Last stack in pipeline at position {len(self.stacks) - 1} must be composed of RGB images' \
+            if append else 'Input stack must be composed of RGB images'
+        assert len(to_process.shape) == 4, err_msg
+
+        # Image in grayscale using the linear NTSC method
+        gray = np.copy(to_process)[:, :, :, 0]
+        for i, frame in enumerate(to_process):
+            gray[i] = cv.cvtColor(frame, cv.COLOR_RGB2GRAY)
+
+        # Add grayscale image to the stack pipeline
         if append:
-            # Assume the images are RGB
-            assert len(self.stacks[-1].shape) == 4, f'Last stack in pipeline at position {len(self.stacks)} should ' \
-                                                    f'be composed of RGB images'
-
-            # Image in grayscale using the linear NTSC method
-            gray = np.copy(self.stacks[-1])[:, :, :, 0]
-            for i, frame in enumerate(self.stacks[-1]):
-                gray[i] = cv.cvtColor(frame, cv.COLOR_RGB2GRAY)
-
-            # Add grayscale image to the stack pipeline
             self.stacks.append(gray)
 
-            return gray
-        else:
-            # Assume the images are RGB
-            assert len(self.stack.shape) == 4, 'Input stack should be composed of RGB images'
-
-            # Image in grayscale using the linear NTSC method
-            gray = np.copy(self.stack)[:, :, :, 0]
-            for i, frame in enumerate(self.stack):
-                gray[i] = cv.cvtColor(frame, cv.COLOR_RGB2GRAY)
-
-            return gray
+        return gray
 
     def threshold(self, min_, max_, append=True):
         pass
@@ -129,20 +123,14 @@ class Stack:
             Last image in the stack pipeline, which has been now treated with `func`.
         """
 
-        if append:
-            # Process each frame in the last stack of the pipeline history
-            processed = np.copy(self.stacks[-1])
-            for i, frame in enumerate(self.stacks[-1]):
-                processed[i] = func(frame)
+        # Process each frame of the original stack
+        to_process = self.stacks[-1] if append else self.stack
+        processed = np.copy(to_process)
+        for i, frame in enumerate(to_process):
+            processed[i] = func(frame)
 
-            # Add it to the pipeline history
+        # Add it to the pipeline history
+        if append:
             self.stacks.append(processed)
 
-            return processed
-        else:
-            # Process each frame of the original stack
-            processed = np.copy(self.stack)
-            for i, frame in enumerate(self.stack):
-                processed[i] = func(frame)
-
-            return processed
+        return processed
