@@ -67,6 +67,11 @@ class Stack:
         # WARNING: list of ndarray objects, shape of stacks might vary throughout it
         self.stacks = [np.copy(self.stack)]
 
+    def stack_select(self, append):
+        """ TODO: add docstring
+        """
+        return self.stacks[-1] if append else self.stack
+
     def grayscale(self, append=True):
         """Returns the last stack in grayscale using the linear NTSC method, and adds the stack to the pipeline history.
         If `append` is false, returns the first stack in grayscale using the linear NTSC method.
@@ -75,7 +80,7 @@ class Stack:
         ----------
         append : bool, default True
             If true processes the last stack in the stack pipeline and appends to it, if false processes the initial
-             stack.
+            stack.
 
 		Returns
 		-------
@@ -84,7 +89,7 @@ class Stack:
 		"""
 
         # Select which stack to process
-        to_process = self.stacks[-1] if append else self.stack
+        to_process = self.stack_select(append)
 
         # Assume the images are RGB
         err_msg = f'Last stack in pipeline at position {len(self.stacks) - 1} must be composed of RGB images' \
@@ -96,15 +101,33 @@ class Stack:
         for i, frame in enumerate(to_process):
             gray[i] = cv.cvtColor(frame, cv.COLOR_RGB2GRAY)
 
-        # Add grayscale image to the stack pipeline
+        # Add grayscale stack to the pipeline
         if append:
             self.stacks.append(gray)
 
         return gray
 
-    def threshold(self, min_, max_, append=True):
-        # TODO: implement thresholding method
-        pass
+    def binary_threshold(self, max_val, append=True):
+        """ TODO: add docstring
+        """
+
+        # Select which stack to process
+        to_process = self.stack_select(append)
+
+        # If the image is not greyscale, then make it
+        if len(to_process.shape) == 4:
+            to_process = self.grayscale(append=append)
+
+        # Apply the binary threshold (set any pixel exceeding `max_val` to white)
+        thresh = np.copy(to_process)
+        for i, frame in enumerate(to_process):
+            _, thresh[i] = cv.threshold(frame, max_val, 255, cv.THRESH_BINARY)
+
+        # Add thresholded stack to the pipeline
+        if append:
+            self.stacks.append(thresh)
+
+        return thresh
 
     def apply(self, func, append=True):
         """Apply external processing function to the last stack in the stack pipeline and add it to the pipeline
@@ -125,7 +148,7 @@ class Stack:
         """
 
         # Process each frame of the original stack
-        to_process = self.stacks[-1] if append else self.stack
+        to_process = self.stack_select(append)
         processed = np.copy(to_process)
         for i, frame in enumerate(to_process):
             processed[i] = func(frame)
