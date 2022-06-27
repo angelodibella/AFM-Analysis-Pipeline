@@ -103,6 +103,7 @@ class Stack:
         return gray
 
     def threshold(self, min_, max_, append=True):
+        # TODO: implement thresholding method
         pass
 
     def apply(self, func, append=True):
