@@ -72,12 +72,16 @@ class Stack:
         """
         return self.stacks[-1] if append else self.stack
 
-    def grayscale(self, append=True):
+    def grayscale(self, coeffs=[0.114, 0.587, 0.299], append=True):
         """Returns the last stack in grayscale using the linear NTSC method, and adds the stack to the pipeline history.
         If `append` is false, returns the first stack in grayscale using the linear NTSC method.
 
         Parameters
         ----------
+        coeffs : array_like, default [0.114, 0.587, 0.299]
+            Three-vector of floats (must sum to 1) with which respectively the red, green, and blue color channels are
+            to be weighted when converting to grayscale. The default is the NTSC color formula for best human
+            perception.
         append : bool, default True
             If true processes the last stack in the stack pipeline and appends to it, if false processes the initial
             stack.
@@ -85,11 +89,14 @@ class Stack:
 		Returns
 		-------
 		gray : ndarray
-		    Grayscale copy of the initial stack, now also the last element in the `stacks` list.
+		    Grayscale copy of the selected stack.
 		"""
 
         # Select which stack to process
         to_process = self.stack_select(append)
+
+        # Vectorize color coefficients
+        coeffs = np.array(coeffs).reshape((1, 3))
 
         # Assume the images are RGB
         err_msg = f'Last stack in pipeline at position {len(self.stacks) - 1} must be composed of RGB images' \
@@ -99,7 +106,7 @@ class Stack:
         # Image in grayscale using the linear NTSC method
         gray = np.copy(to_process)[:, :, :, 0]
         for i, frame in enumerate(to_process):
-            gray[i] = cv.cvtColor(frame, cv.COLOR_RGB2GRAY)
+            gray[i] = cv.transform(frame, coeffs)
 
         # Add grayscale stack to the pipeline
         if append:
@@ -107,8 +114,26 @@ class Stack:
 
         return gray
 
-    def binary_threshold(self, max_val, append=True):
-        """ TODO: add docstring
+    def binary_threshold(self, max_val, coeffs=[0.114, 0.587, 0.299], append=True):
+        """Thresholds (binary) the last stack in the pipeline and appends to it. If `append` is false, returns the
+        first stack treated with a binary threshold.
+
+        Parameters
+        ----------
+        max_val : int
+            Grey value (0-255) below which all pixels in the stack are set to 0 and above which to 255.
+        coeffs : array_like, default [0.114, 0.587, 0.299]
+            Three-vector of floats (must sum to 1) with which respectively the red, green, and blue color channels are
+            to be weighted when converting to grayscale. The default is the NTSC color formula for best human
+            perception.
+        append : bool, default True
+            If true processes the last stack in the stack pipeline and appends to it, if false processes the initial
+            stack.
+
+        Returns
+        -------
+        thresh : ndarray
+            Thresholded copy of the selected stack.
         """
 
         # Select which stack to process
@@ -116,9 +141,9 @@ class Stack:
 
         # If the image is not greyscale, then make it
         if len(to_process.shape) == 4:
-            to_process = self.grayscale(append=append)
+            to_process = self.grayscale(coeffs=coeffs, append=append)
 
-        # Apply the binary threshold (set any pixel exceeding `max_val` to white)
+        # Apply the binary threshold (set any pixel exceeding `max_val` to white, and below it to black)
         thresh = np.copy(to_process)
         for i, frame in enumerate(to_process):
             _, thresh[i] = cv.threshold(frame, max_val, 255, cv.THRESH_BINARY)
