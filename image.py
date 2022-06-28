@@ -330,12 +330,35 @@ class Stack:
 
         return gauss
 
-    def canny(self):
+    def canny(self, low, high, coeffs=[0.114, 0.587, 0.299], otsu=True, append=True):
         """TODO: add docstring"""
 
-        # TODO: implement `canny`
+        # Select which stack to process
+        to_process = self.stack_select(append)
 
-        pass
+        # If the image is not greyscale, then make it
+        if len(to_process.shape) == 4:
+            to_process = self.grayscale(coeffs=coeffs, append=append)
+
+        # Apply canny edge detector
+        canny = np.copy(to_process)
+        for i, frame in enumerate(to_process):
+            # Find Otsu threshold values
+            if otsu:
+                high, _ = cv.threshold(frame, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
+                low = 0.5 * high
+            canny[i] = cv.Canny(frame, low, high)
+
+        # Add edge-detected stack to the pipeline
+        if append:
+            self.info.append(f'Apply Canny edge detector using')
+            if otsu:
+                self.info[-1] += ' Otsu threshold values (different for each frame)'
+            else:
+                self.info[-1] += f' threshold values from {low} to {high}'
+            self.stacks.append(canny)
+
+        return canny
 
     def apply(self, func, append=True):
         """Apply external processing function to the last stack in the stack pipeline and add it to the pipeline
