@@ -13,7 +13,7 @@ def icc(img):
 
 	Returns
 	-------
-	ndarray
+	np.ndarray
 	    Image with inverted color channels.
 	"""
 
@@ -41,7 +41,7 @@ class Stack:
 
 	Attributes
 	----------
-	stack : ndarray
+	stack : np.ndarray
 	    Initial stack of images.
 	frames : int
 	    Number of frames in the initial stack.
@@ -49,7 +49,7 @@ class Stack:
 	    Number of pixels in the x-direction of the images in the stack.
 	ysize : int
 	    Number of pixels in the y-direction of the images in the stack.
-	stacks : list of ndarray
+	stacks : list of np.ndarray
 	    Contains the image stacks at each stage in the pipeline.
 	"""
 
@@ -88,7 +88,7 @@ class Stack:
 
 		Returns
 		-------
-		gray : ndarray
+		gray : np.ndarray
 		    Grayscale copy of the selected stack.
 		"""
 
@@ -114,7 +114,7 @@ class Stack:
 
         return gray
 
-    def binary_threshold(self, max_val, coeffs=[0.114, 0.587, 0.299], append=True):
+    def binary_threshold(self, max_val, coeffs=[0.114, 0.587, 0.299], otsu=False, append=True):
         """Thresholds (binary) the last stack in the pipeline and appends to it. If `append` is false, returns the
         first stack treated with a binary threshold.
 
@@ -126,13 +126,15 @@ class Stack:
             Three-vector of floats (must sum to 1) with which respectively the red, green, and blue color channels are
             to be weighted when converting to grayscale. The default is the NTSC color formula for best human
             perception.
+        otsu : bool, default False
+            TODO: add parameter description for `otsu`
         append : bool, default True
             If true processes the last stack in the stack pipeline and appends to it, if false processes the initial
             stack.
 
         Returns
         -------
-        thresh : ndarray
+        thresh : np.ndarray
             Thresholded copy of the selected stack.
         """
 
@@ -146,13 +148,100 @@ class Stack:
         # Apply the binary threshold (set any pixel exceeding `max_val` to white, and below it to black)
         thresh = np.copy(to_process)
         for i, frame in enumerate(to_process):
-            _, thresh[i] = cv.threshold(frame, max_val, 255, cv.THRESH_BINARY)
+            if otsu:
+                _, thresh[i] = cv.threshold(frame, max_val, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
+            else:
+                _, thresh[i] = cv.threshold(frame, max_val, 255, cv.THRESH_BINARY)
 
         # Add thresholded stack to the pipeline
         if append:
             self.stacks.append(thresh)
 
         return thresh
+
+    def adaptive_gaussian_threshold(self, block_size, c, coeffs=[0.114, 0.587, 0.299], append=True):
+        """Thresholds (adaptive Gaussian) the last stack in the pipeline and appends to it. If `append` is false,
+        returns the first stack treated with a binary threshold.
+
+        Parameters
+        ----------
+        block_size : int
+            Size of a pixel neighborhood that is used to calculate a threshold value for the pixel: 3, 5, 7, and so on.
+        c : float
+            Constant subtracted from the mean or weighted mean.
+        coeffs : array_like, default [0.114, 0.587, 0.299]
+            Three-vector of floats (must sum to 1) with which respectively the red, green, and blue color channels are
+            to be weighted when converting to grayscale. The default is the NTSC color formula for best human
+            perception.
+        append : bool, default=True
+            If true processes the last stack in the stack pipeline and appends to it, if false processes the initial
+            stack.
+
+        Returns
+        -------
+        thresh : np.ndarray
+            Thresholded copy of the selected stack.
+        """
+
+        # Select which stack to process
+        to_process = self.stack_select(append)
+
+        # If the image is not greyscale, then make it
+        if len(to_process.shape) == 4:
+            to_process = self.grayscale(coeffs=coeffs, append=append)
+
+        # Apply the binary threshold (set any pixel exceeding `max_val` to white, and below it to black)
+        thresh = np.copy(to_process)
+        for i, frame in enumerate(to_process):
+            thresh[i] = cv.adaptiveThreshold(frame, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, block_size, c)
+
+        # Add thresholded stack to the pipeline
+        if append:
+            self.stacks.append(thresh)
+
+        return thresh
+
+    def gaussian_blur(self, ker, sigma, coeffs=[0.114, 0.587, 0.299], append=True):
+        """TODO: add docstring"""
+
+        # Select which stack to process
+        to_process = self.stack_select(append)
+
+        # If the image is not greyscale, then make it
+        if len(to_process.shape) == 4:
+            to_process = self.grayscale(coeffs=coeffs, append=append)
+
+        # Apply the binary threshold (set any pixel exceeding `max_val` to white, and below it to black)
+        gauss = np.copy(to_process)
+        for i, frame in enumerate(to_process):
+            gauss[i] = cv.GaussianBlur(frame, ker, sigma)
+
+        # Add thresholded stack to the pipeline
+        if append:
+            self.stacks.append(gauss)
+
+        return gauss
+
+    def median_blur(self, ksize, coeffs=[0.114, 0.587, 0.299], append=True):
+        """TODO: add docstring"""
+
+        # Select which stack to process
+        to_process = self.stack_select(append)
+
+        # If the image is not greyscale, then make it
+        if len(to_process.shape) == 4:
+            to_process = self.grayscale(coeffs=coeffs, append=append)
+
+        # Apply the binary threshold (set any pixel exceeding `max_val` to white, and below it to black)
+        gauss = np.copy(to_process)
+        for i, frame in enumerate(to_process):
+            gauss[i] = cv.medianBlur(frame, ksize)
+
+        # Add thresholded stack to the pipeline
+        if append:
+            self.stacks.append(gauss)
+
+        return gauss
 
     def apply(self, func, append=True):
         """Apply external processing function to the last stack in the stack pipeline and add it to the pipeline
@@ -168,7 +257,7 @@ class Stack:
 
         Returns
         -------
-        ndarray
+        np.ndarray
             Last image in the stack pipeline, which has been now treated with `func`.
         """
 
