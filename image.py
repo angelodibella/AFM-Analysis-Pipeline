@@ -20,6 +20,28 @@ def icc(img):
     return cv.cvtColor(img, cv.COLOR_RGB2BGR)
 
 
+def play(frames, fps=30, title=''):
+    """TODO: add docstring"""
+
+    # From frames per second to milliseconds per frame
+    mspf = int(1000 / fps)
+
+    # Show consecutive images in stack
+    keep = True
+    while keep:
+        for frame in frames:
+            cv.imshow(title, icc(frame))
+            cv.waitKey(mspf - 25)
+
+            # If keyboard input `q` then stop playing the video, if `w` restart the video
+            key = cv.waitKey(25)
+            if key & 0xFF == ord('q'):
+                keep = False
+                break
+            elif key & 0xFF == ord('w'):
+                break
+
+
 class Stack:
     """Allows for the implementation of an image processing pipeline from an initial stack (TIFF) of images. Each
     method has an optional boolean parameter `append`: if false the initial stack is copied, processed, and returned,

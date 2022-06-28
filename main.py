@@ -10,11 +10,13 @@ coeffs = [0.34, 0.66, 0.0]
 block_size = 11
 c = 2
 
-cv.imshow('', stack_375nm.median_blur(9, coeffs=coeffs)[-5])
-print(len(stack_375nm.stacks))
-cv.waitKey(0)
+im.play(stack_375nm.stack)
 
-cv.imshow('', stack_375nm.binary_threshold(0, otsu=True)[-5])
-print(len(stack_375nm.stacks))
-cv.waitKey(0)
+# cv.imshow('', stack_375nm.median_blur(9, coeffs=coeffs)[-5])
+# print(len(stack_375nm.stacks))
+# cv.waitKey(0)
+#
+# cv.imshow('', stack_375nm.binary_threshold(0, otsu=True)[-5])
+# print(len(stack_375nm.stacks))
+# cv.waitKey(0)
 
