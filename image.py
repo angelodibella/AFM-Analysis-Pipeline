@@ -100,7 +100,7 @@ class Stack:
         # Keep track of processes
         self.info = []
 
-    # ---------------- Extraction Methods ----------------
+    # ---------------- Getter Methods ----------------
 
     def stack_select(self, append):
         """ TODO: add docstring
@@ -150,7 +150,7 @@ class Stack:
 
         return contours, out_stack
 
-    # ----------------------------------------------------
+    # ------------------------------------------------
 
     def grayscale(self, coeffs=[0.114, 0.587, 0.299], append=True):
         """Returns the last stack in grayscale using the linear NTSC method, and adds the stack to the pipeline history.

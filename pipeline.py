@@ -8,5 +8,7 @@ c = 2
 def test(stack):
     stack.gaussian_blur((3, 3), 0, coeffs=coeffs)
     stack.binary_threshold(32, otsu=True)
-    stack.canny(0, 0)
-    # stack.get_contours(append=True)
+    # stack.canny(0, 0)
+    contours, _ = stack.get_contours(append=True)
+
+    return contours
