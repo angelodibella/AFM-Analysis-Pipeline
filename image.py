@@ -20,7 +20,7 @@ def icc(img):
     return cv.cvtColor(img, cv.COLOR_RGB2BGR)
 
 
-def play(frames, fps=30, title=''):
+def play(frames, fps=20, title=''):
     """TODO: add docstring"""
 
     # From frames per second to milliseconds per frame
@@ -77,6 +77,12 @@ class Stack:
 	    Description of each step in the pipeline.
 	"""
 
+    RETR_MODES = {0: 'external retrieval', 1: 'list retrieval', 2: 'two-level retrieval', 3: 'tree retrieval',
+                  4: 'floodfill retrieval'}
+
+    APPROX_METHODS = {1: 'no approximation', 2: 'simple approximation', 3: 'Teh-Chin approximation (L1)',
+                      4: 'Teh-Chin approximation (KCOS)'}
+
     def __init__(self, path, timings=1, px_xlen=1, px_ylen=0):
         self.path = path
         self.timings = timings
@@ -119,6 +125,30 @@ class Stack:
         for i, s in enumerate(self.info):
             print(f'{i + 1}.', s)
         print('-' * len(fixture))
+
+    def get_contours(self, hierarchy=cv.RETR_TREE, method=cv.CHAIN_APPROX_SIMPLE, coeffs=[0.114, 0.587, 0.299],
+                     append=False):
+        """TODO: add docstring"""
+
+        # If the image is not greyscale, then make it
+        to_process = np.copy(self.stacks[-1])
+        if len(self.stacks[-1].shape) == 4:
+            to_process = self.grayscale(coeffs=coeffs, append=False)
+
+        # Find contours in each frame
+        contours = []
+        out_stack = np.zeros_like(to_process)
+        for i, frame in enumerate(to_process):
+            contour, _ = cv.findContours(frame, hierarchy, method)
+            cv.drawContours(out_stack[i], contour, -1, (255, 255, 255), 1)
+            contours.append(contour)
+
+        if append:
+            self.info.append(f'Find contours using {self.RETR_MODES[hierarchy]} with {self.APPROX_METHODS[method]}, '
+                             f'and draw them')
+            self.stacks.append(out_stack)
+
+        return contours, out_stack
 
     # ----------------------------------------------------
 
@@ -206,9 +236,8 @@ class Stack:
 
         # Add thresholded stack to the pipeline
         if append:
-            self.info.append(f'Apply a binary threshold with maximum value {max_val}')
-            if otsu:
-                self.info[-1] += 'using the Otsu method'
+            self.info.append(f'Apply a binary threshold')
+            self.info[-1] += ' using the Otsu method' if otsu else f' with maximum value {max_val}'
             self.stacks.append(thresh)
 
         return thresh
@@ -300,6 +329,13 @@ class Stack:
             self.stacks.append(gauss)
 
         return gauss
+
+    def canny(self):
+        """TODO: add docstring"""
+
+        # TODO: implement `canny`
+
+        pass
 
     def apply(self, func, append=True):
         """Apply external processing function to the last stack in the stack pipeline and add it to the pipeline
