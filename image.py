@@ -73,6 +73,8 @@ class Stack:
 	    Number of pixels in the y-direction of the images in the stack.
 	stacks : list of np.ndarray
 	    Contains the image stacks at each stage in the pipeline.
+	info : list of str
+	    Description of each step in the pipeline.
 	"""
 
     def __init__(self, path, timings=1, px_xlen=1, px_ylen=0):
@@ -89,10 +91,36 @@ class Stack:
         # WARNING: list of ndarray objects, shape of stacks might vary throughout it
         self.stacks = [np.copy(self.stack)]
 
+        # Keep track of processes
+        self.info = []
+
+    # ---------------- Extraction Methods ----------------
+
     def stack_select(self, append):
         """ TODO: add docstring
         """
         return self.stacks[-1] if append else self.stack
+
+    def last(self):
+        """TODO: add docstring"""
+        return self.stacks[-1]
+
+    def length(self):
+        """TODO: add docstring"""
+        return len(self.stacks)
+
+    def print_info(self, sub_fixture=''):
+        """TODO: add docstring"""
+
+        if sub_fixture != '':
+            sub_fixture += ' '
+        fixture = f"----------------- Pipeline {sub_fixture}for {self.path.split('/')[-1]} -----------------"
+        print('\n' + fixture)
+        for i, s in enumerate(self.info):
+            print(f'{i + 1}.', s)
+        print('-' * len(fixture))
+
+    # ----------------------------------------------------
 
     def grayscale(self, coeffs=[0.114, 0.587, 0.299], append=True):
         """Returns the last stack in grayscale using the linear NTSC method, and adds the stack to the pipeline history.
@@ -132,6 +160,7 @@ class Stack:
 
         # Add grayscale stack to the pipeline
         if append:
+            self.info.append(f'Convert to 8bit grayscale using RGB weights {coeffs.reshape(3)}')
             self.stacks.append(gray)
 
         return gray
@@ -177,6 +206,9 @@ class Stack:
 
         # Add thresholded stack to the pipeline
         if append:
+            self.info.append(f'Apply a binary threshold with maximum value {max_val}')
+            if otsu:
+                self.info[-1] += 'using the Otsu method'
             self.stacks.append(thresh)
 
         return thresh
@@ -219,6 +251,8 @@ class Stack:
 
         # Add thresholded stack to the pipeline
         if append:
+            self.info.append(f'Apply a binary adaptive Gaussian threshold with block size {block_size} and mean '
+                             f'offset {c}')
             self.stacks.append(thresh)
 
         return thresh
@@ -240,6 +274,7 @@ class Stack:
 
         # Add thresholded stack to the pipeline
         if append:
+            self.info.append(f'Apply Gaussian blur with kernel shape {ker} and sigma {sigma}')
             self.stacks.append(gauss)
 
         return gauss
@@ -261,6 +296,7 @@ class Stack:
 
         # Add thresholded stack to the pipeline
         if append:
+            self.info.append(f'Apply median blur with kernel size {ksize}')
             self.stacks.append(gauss)
 
         return gauss
@@ -291,6 +327,7 @@ class Stack:
 
         # Add it to the pipeline history
         if append:
+            self.info.append(f'Apply function {func.__name__} to each frame')
             self.stacks.append(processed)
 
         return processed
