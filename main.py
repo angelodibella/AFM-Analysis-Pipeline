@@ -37,10 +37,10 @@ thresh_375nM = stack_375nM.copy()
 contours_thresh = pl.otsu_1(thresh_375nM)
 thresh_375nM.print_info()
 
-# im.play(copy_375nM.last())
-# im.play(stack_375nM.last())
+im.play(thresh_375nM.last())
 
-thresh_375nM.save(STACK_OUT_DIR, 'otsu_1_375nM')
+# # Save pipeline info
+# thresh_375nM.save(STACK_OUT_DIR, 'otsu_1_375nM')
 
 # plt.figure()
 # contour_numbers = [len(frame_cont) for frame_cont in contours]
