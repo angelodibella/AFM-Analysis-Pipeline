@@ -5,9 +5,13 @@ import numpy as np
 import image as im
 import pipeline as pl
 
+# Define directories
+OUT_DIR = 'Output Images/'
+STACK_OUT_DIR = 'Output Images/Stack Pipelines/'
+
 # -------------------- Data --------------------
 
-TOT_AREA = 4e3  # nanometers squared
+TOT_AREA = 4e6  # nanometers squared
 
 # Define data for 375 nM epidermicin topography
 PATH_375nM = 'Images/POPCPG8_375nM_epi.tiff'
@@ -22,15 +26,21 @@ INJ_FRAMES_750nM = [2]
 # ----------------------------------------------
 
 # Assuming pixels represent square areas
-px_len = np.sqrt(TOT_AREA)
+px_len = np.sqrt(TOT_AREA) / 512
 
 # Create initial stacks
 stack_375nM = im.Stack(PATH_375nM, timings=TIME_375nM, px_xlen=px_len)
 stack_750nM = im.Stack(PATH_750nM, timings=TIME_750nM, px_xlen=px_len)
 
-contours = pl.otsu_1(stack_375nM)
-stack_375nM.print_info()
-im.play(stack_375nM.last())
+thresh_375nM = stack_375nM.copy()
+
+contours_thresh = pl.otsu_1(thresh_375nM)
+thresh_375nM.print_info()
+
+# im.play(copy_375nM.last())
+# im.play(stack_375nM.last())
+
+thresh_375nM.save(STACK_OUT_DIR, 'otsu_1_375nM')
 
 # plt.figure()
 # contour_numbers = [len(frame_cont) for frame_cont in contours]

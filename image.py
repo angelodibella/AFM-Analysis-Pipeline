@@ -1,3 +1,5 @@
+import copy
+
 import numpy as np
 import tifffile as tiff
 import cv2 as cv
@@ -40,6 +42,15 @@ def play(frames, fps=20, title=''):
                 break
             elif key & 0xFF == ord('w'):
                 break
+
+
+def to_RGB(stack):
+    """TODO: add docstring"""
+
+    if len(stack.shape) == 3:
+        return [cv.cvtColor(frame.astype('uint8'), cv.COLOR_GRAY2RGB) for frame in stack]
+    else:
+        return stack
 
 
 class Stack:
@@ -100,7 +111,7 @@ class Stack:
         # Keep track of processes
         self.info = []
 
-    # ---------------- Getter Methods ----------------
+    # ---------------- Getter-ish Methods ----------------
 
     def stack_select(self, append):
         """ TODO: add docstring
@@ -150,7 +161,30 @@ class Stack:
 
         return contours, out_stack
 
-    # ------------------------------------------------
+    def copy(self):
+        """Returns a deep copy of the current stack object.
+
+        Returns
+        -------
+        Stack
+            A deep copy of the current stack object.
+        """
+
+        return copy.deepcopy(self)
+
+    def save(self, directory, name, frame_num=0):
+        """TODO: add docstring"""
+
+        if frame_num:
+            tiff.imwrite(directory + name + '.tiff', self.stacks[frame_num], imagej=True)
+        else:
+            # Convert all images to RGB to ensure homogeneity across frames in all stacks
+            rgb_stacks = np.array([to_RGB(stack) for stack in self.stacks])
+
+            # Write the image
+            tiff.imwrite(directory + name + '.tiff', rgb_stacks, imagej=True, metadata={'axes': 'TCYXS'})
+
+    # ----------------------------------------------------
 
     def grayscale(self, coeffs=[0.114, 0.587, 0.299], append=True):
         """Returns the last stack in grayscale using the linear NTSC method, and adds the stack to the pipeline history.
