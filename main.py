@@ -5,6 +5,9 @@ import numpy as np
 import image as im
 import pipeline as pl
 
+# Save output?
+save = True if input('Save output files? [y/n] ').lower() == 'y' else False
+
 # Define directories
 OUT_DIR = 'Output Images/'
 STACK_OUT_DIR = 'Output Images/Stack Pipelines/'
@@ -28,22 +31,15 @@ INJ_FRAMES_750nM = [2]
 # Assuming pixels represent square areas
 px_len = np.sqrt(TOT_AREA) / 512
 
-# Create initial stacks
+# Create initial stacks, models for further processing
 stack_375nM = im.Stack(PATH_375nM, timings=TIME_375nM, px_xlen=px_len)
 stack_750nM = im.Stack(PATH_750nM, timings=TIME_750nM, px_xlen=px_len)
 
-thresh_375nM = stack_375nM.copy()
+# Use `otsu_1` pipeline
+otsu_375nM = stack_375nM.copy()
+contours_thresh = pl.otsu_1(otsu_375nM)
+# im.play(thresh_375nM.last())
 
-contours_thresh = pl.otsu_1(thresh_375nM)
-thresh_375nM.print_info()
-
-im.play(thresh_375nM.last())
-
-# # Save pipeline info
-# thresh_375nM.save(STACK_OUT_DIR, 'otsu_1_375nM')
-
-# plt.figure()
-# contour_numbers = [len(frame_cont) for frame_cont in contours]
-# frames = np.arange(stack_375nM.frames)
-# plt.plot(frames, contour_numbers)
-# plt.show()
+# Save pipeline info
+if save:
+    otsu_375nM.save(STACK_OUT_DIR, 'otsu_1_375nM')

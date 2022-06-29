@@ -84,6 +84,8 @@ class Stack:
 	    Number of pixels in the y-direction of the images in the stack.
 	stacks : list of np.ndarray
 	    Contains the image stacks at each stage in the pipeline.
+	contours : list of int
+	    Contains the contours retrieved when attempting to find them.
 	info : list of str
 	    Description of each step in the pipeline.
 	"""
@@ -108,10 +110,13 @@ class Stack:
         # WARNING: list of ndarray objects, shape of stacks might vary throughout it
         self.stacks = [np.copy(self.stack)]
 
+        # Record contours
+        self.contours = []
+
         # Keep track of processes
         self.info = []
 
-    # ---------------- Getter-ish Methods ----------------
+    # ------------------- Getter-ish Methods -------------------
 
     def stack_select(self, append):
         """ TODO: add docstring
@@ -158,6 +163,7 @@ class Stack:
             self.info.append(f'Find contours using {self.RETR_MODES[hierarchy]} with {self.APPROX_METHODS[method]}, '
                              f'and draw them')
             self.stacks.append(out_stack)
+            self.contours.append(contours)
 
         return contours, out_stack
 
@@ -184,7 +190,7 @@ class Stack:
             # Write the image
             tiff.imwrite(directory + name + '.tiff', rgb_stacks, imagej=True, metadata={'axes': 'TCYXS'})
 
-    # ----------------------------------------------------
+    # ---------------- Image Processing Methods ----------------
 
     def grayscale(self, coeffs=[0.114, 0.587, 0.299], append=True):
         """Returns the last stack in grayscale using the linear NTSC method, and adds the stack to the pipeline history.
@@ -424,3 +430,15 @@ class Stack:
             self.stacks.append(processed)
 
         return processed
+
+    # ----------------- Image Analysis Methods -----------------
+
+    def fix_contours(self):
+        """TODO: add docstring"""
+
+        # TODO: implement this, close the contours that branch from the external contour, perhaps implementing a
+        #       logical not at the edges?
+
+        pass
+
+
