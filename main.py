@@ -35,11 +35,15 @@ px_len = np.sqrt(TOT_AREA) / 512
 stack_375nM = im.Stack(PATH_375nM, timings=TIME_375nM, px_xlen=px_len)
 stack_750nM = im.Stack(PATH_750nM, timings=TIME_750nM, px_xlen=px_len)
 
-# Use `otsu_1` pipeline
-otsu_375nM = stack_375nM.copy()
-contours_thresh = pl.otsu_1(otsu_375nM)
-im.play(otsu_375nM.last())
+# Use `thresh_1` pipeline
+thresh_1_375nM = stack_375nM.copy()
+contours_otsu_1_375nM = pl.thresh_1(thresh_1_375nM)
+
+# Use `thresh_2` pipeline
+thresh_2_375nM = stack_375nM.copy()
+contours_otsu_2_375nM = pl.thresh_2(thresh_2_375nM)
 
 # Save pipeline info
 if save:
-    otsu_375nM.save(STACK_OUT_DIR, 'otsu_1_375nM')
+    thresh_1_375nM.save(STACK_OUT_DIR, 'thresh_1_375nM')
+    thresh_2_375nM.save(STACK_OUT_DIR, 'thresh_2_375nM')

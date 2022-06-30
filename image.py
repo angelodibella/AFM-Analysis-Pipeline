@@ -123,10 +123,10 @@ class Stack:
 
     # ------------------- Getter-ish Methods -------------------
 
-    def stack_select(self, append):
+    def stack_select(self, append, which=-1):
         """ TODO: add docstring
         """
-        return self.stacks[-1] if append else self.stack
+        return self.stacks[which] if append else self.stack
 
     def last(self):
         """TODO: add docstring"""
@@ -147,8 +147,8 @@ class Stack:
             print(f'{i + 1}.', s)
         print('-' * len(fixture))
 
-    def get_contours(self, hierarchy=cv.RETR_EXTERNAL, method=cv.CHAIN_APPROX_NONE, inv=True, coeffs=[0.114, 0.587, 0.299],
-                     append=False):
+    def get_contours(self, hierarchy=cv.RETR_EXTERNAL, method=cv.CHAIN_APPROX_NONE, inv=True,
+                     coeffs=[0.114, 0.587, 0.299], append=False):
         """TODO: add docstring"""
 
         # If the image is not greyscale, then make it
@@ -162,11 +162,13 @@ class Stack:
 
         # Find contours in each frame
         contours = []
+        hiers = []
         out_stack = np.zeros_like(to_process)
         for i, frame in enumerate(to_process):
-            contour, _ = cv.findContours(frame, hierarchy, method)
+            contour, hier = cv.findContours(frame, hierarchy, method)
             cv.drawContours(out_stack[i], contour, -1, (255, 255, 255), 1)
             contours.append(contour)
+            hiers.append(hier)
 
         if append:
             self.info.append(f'Find contours using {self.RETR_MODES[hierarchy]} with {self.APPROX_METHODS[method]}, '
@@ -174,7 +176,7 @@ class Stack:
             self.stacks.append(out_stack)
             self.contours.append(contours)
 
-        return contours, out_stack
+        return contours, hiers, out_stack
 
     def copy(self):
         """Returns a deep copy of the current stack object.
@@ -191,13 +193,24 @@ class Stack:
         """TODO: add docstring"""
 
         if frame_num:
+            print(f"\nSaving stack at position {frame_num}... ({{directory+name+'.tiff'}})")
             tiff.imwrite(directory + name + '.tiff', self.stacks[frame_num], imagej=True)
         else:
+            print(f"\nSaving all stacks... ({directory+name+'.tiff'})")
+
             # Convert all images to RGB to ensure homogeneity across frames in all stacks
             rgb_stacks = np.array([to_RGB(stack) for stack in self.stacks])
 
             # Write the image
             tiff.imwrite(directory + name + '.tiff', rgb_stacks, imagej=True, metadata={'axes': 'TCYXS'})
+
+    # ------------------- Setter-ish Methods -------------------
+
+    def add(self, stack, info='Add external stack'):
+        """TODO: add docstring"""
+
+        self.stacks.append(stack)
+        self.info.append(info)
 
     # ---------------- Image Processing Methods ----------------
 
@@ -408,6 +421,36 @@ class Stack:
             self.stacks.append(canny)
 
         return canny
+
+    def intensity_band(self, low, high, which=-1, coeffs=[0.114, 0.587, 0.299], append=True):
+        """TODO: add docstring"""
+
+        # Select which stack to process
+        to_process = self.stack_select(append, which=which)
+
+        # If the image is not greyscale, then make it
+        if len(to_process.shape) == 4:
+            to_process = self.grayscale(coeffs=coeffs, append=append)
+
+        # # TEST
+        # cv.imshow('', to_process[-5])
+        # cv.waitKey(0)
+
+        # Filter all pixels which are outside the range [low, high] by setting them to white
+        band = np.where((low <= to_process) & (to_process <= high), to_process, 255)
+
+        # # TEST
+        # cv.imshow('', band[-5])
+        # cv.waitKey(0)
+
+        if append:
+            self.stacks.append(band)
+            if which == -1:
+                self.info.append(f'Filtered intensity band in range [{low}, {high}]')
+            else:
+                self.info.append(f'Filtered intensity band in range [{low}, {high}] of stack {which + 1}')
+
+        return band
 
     def apply(self, func, append=True):
         """Apply external processing function to the last stack in the stack pipeline and add it to the pipeline
