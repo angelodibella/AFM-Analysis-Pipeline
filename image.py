@@ -42,6 +42,11 @@ def play(frames, fps=20, title=''):
                 break
             elif key & 0xFF == ord('w'):
                 break
+            elif key & 0xFF == ord('d'):
+                new_mspf = int(mspf - 5)
+                mspf = new_mspf if new_mspf > 25 else mspf
+            elif key & 0xFF == ord('a'):
+                mspf = int(mspf + 5)
 
 
 def to_RGB(stack):

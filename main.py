@@ -38,7 +38,7 @@ stack_750nM = im.Stack(PATH_750nM, timings=TIME_750nM, px_xlen=px_len)
 # Use `otsu_1` pipeline
 otsu_375nM = stack_375nM.copy()
 contours_thresh = pl.otsu_1(otsu_375nM)
-# im.play(thresh_375nM.last())
+im.play(otsu_375nM.last())
 
 # Save pipeline info
 if save:
