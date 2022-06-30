@@ -147,7 +147,7 @@ class Stack:
             print(f'{i + 1}.', s)
         print('-' * len(fixture))
 
-    def get_contours(self, hierarchy=cv.RETR_TREE, method=cv.CHAIN_APPROX_SIMPLE, coeffs=[0.114, 0.587, 0.299],
+    def get_contours(self, hierarchy=cv.RETR_EXTERNAL, method=cv.CHAIN_APPROX_NONE, inv=True, coeffs=[0.114, 0.587, 0.299],
                      append=False):
         """TODO: add docstring"""
 
@@ -155,6 +155,10 @@ class Stack:
         to_process = np.copy(self.stacks[-1])
         if len(self.stacks[-1].shape) == 4:
             to_process = self.grayscale(coeffs=coeffs, append=False)
+
+        # Invert image
+        if inv:
+            to_process = 255 - to_process
 
         # Find contours in each frame
         contours = []
@@ -438,12 +442,6 @@ class Stack:
 
     # ----------------- Image Analysis Methods -----------------
 
-    def fix_contours(self):
-        """TODO: add docstring"""
 
-        # TODO: implement this, close the contours that branch from the external contour, perhaps implementing a
-        #       logical not at the edges?
-
-        pass
 
 
