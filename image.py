@@ -148,7 +148,7 @@ class Stack:
         print('-' * len(fixture))
 
     def get_contours(self, hierarchy=cv.RETR_EXTERNAL, method=cv.CHAIN_APPROX_NONE, inv=True,
-                     coeffs=[0.114, 0.587, 0.299], append=False):
+                     coeffs=[0.299, 0.587, 0.114], append=False):
         """TODO: add docstring"""
 
         # If the image is not greyscale, then make it
@@ -214,13 +214,13 @@ class Stack:
 
     # ---------------- Image Processing Methods ----------------
 
-    def grayscale(self, coeffs=[0.114, 0.587, 0.299], append=True):
+    def grayscale(self, coeffs=[0.299, 0.587, 0.114], append=True):
         """Returns the last stack in grayscale using the linear NTSC method, and adds the stack to the pipeline history.
         If `append` is false, returns the first stack in grayscale using the linear NTSC method.
 
         Parameters
         ----------
-        coeffs : array_like, default [0.114, 0.587, 0.299]
+        coeffs : array_like, default [0.299, 0.587, 0.114]
             Three-vector of floats (must sum to 1) with which respectively the red, green, and blue color channels are
             to be weighted when converting to grayscale. The default is the NTSC color formula for best human
             perception.
@@ -257,7 +257,7 @@ class Stack:
 
         return gray
 
-    def binary_threshold(self, max_val, coeffs=[0.114, 0.587, 0.299], otsu=False, append=True):
+    def binary_threshold(self, max_val, coeffs=[0.299, 0.587, 0.114], otsu=False, append=True):
         """Thresholds (binary) the last stack in the pipeline and appends to it. If `append` is false, returns the
         first stack treated with a binary threshold.
 
@@ -265,7 +265,7 @@ class Stack:
         ----------
         max_val : int
             Grey value (0-255) below which all pixels in the stack are set to 0 and above which to 255.
-        coeffs : array_like, default [0.114, 0.587, 0.299]
+        coeffs : array_like, default [0.299, 0.587, 0.114]
             Three-vector of floats (must sum to 1) with which respectively the red, green, and blue color channels are
             to be weighted when converting to grayscale. The default is the NTSC color formula for best human
             perception.
@@ -304,7 +304,7 @@ class Stack:
 
         return thresh
 
-    def adaptive_gaussian_threshold(self, block_size, c, coeffs=[0.114, 0.587, 0.299], append=True):
+    def adaptive_gaussian_threshold(self, block_size, c, coeffs=[0.299, 0.587, 0.114], append=True):
         """Thresholds (adaptive Gaussian) the last stack in the pipeline and appends to it. If `append` is false,
         returns the first stack treated with a binary threshold.
 
@@ -314,7 +314,7 @@ class Stack:
             Size of a pixel neighborhood that is used to calculate a threshold value for the pixel: 3, 5, 7, and so on.
         c : float
             Constant subtracted from the mean or weighted mean.
-        coeffs : array_like, default [0.114, 0.587, 0.299]
+        coeffs : array_like, default [0.299, 0.587, 0.114]
             Three-vector of floats (must sum to 1) with which respectively the red, green, and blue color channels are
             to be weighted when converting to grayscale. The default is the NTSC color formula for best human
             perception.
@@ -348,7 +348,7 @@ class Stack:
 
         return thresh
 
-    def gaussian_blur(self, ker, sigma, coeffs=[0.114, 0.587, 0.299], append=True):
+    def gaussian_blur(self, ker, sigma, coeffs=[0.299, 0.587, 0.114], append=True):
         """TODO: add docstring"""
 
         # Select which stack to process
@@ -370,7 +370,7 @@ class Stack:
 
         return gauss
 
-    def median_blur(self, ksize, coeffs=[0.114, 0.587, 0.299], append=True):
+    def median_blur(self, ksize, coeffs=[0.299, 0.587, 0.114], append=True):
         """TODO: add docstring"""
 
         # Select which stack to process
@@ -392,7 +392,7 @@ class Stack:
 
         return gauss
 
-    def canny(self, low, high, coeffs=[0.114, 0.587, 0.299], otsu=True, append=True):
+    def canny(self, low, high, coeffs=[0.299, 0.587, 0.114], otsu=True, append=True):
         """TODO: add docstring"""
 
         # Select which stack to process
@@ -422,7 +422,7 @@ class Stack:
 
         return canny
 
-    def intensity_band(self, low, high, which=-1, coeffs=[0.114, 0.587, 0.299], append=True):
+    def intensity_band(self, low, high, which=-1, coeffs=[0.299, 0.587, 0.114], otsu=False, append=True):
         """TODO: add docstring"""
 
         # Select which stack to process
@@ -432,16 +432,17 @@ class Stack:
         if len(to_process.shape) == 4:
             to_process = self.grayscale(coeffs=coeffs, append=append)
 
-        # # TEST
-        # cv.imshow('', to_process[-5])
-        # cv.waitKey(0)
-
-        # Filter all pixels which are outside the range [low, high] by setting them to white
-        band = np.where((low <= to_process) & (to_process <= high), to_process, 255)
-
-        # # TEST
-        # cv.imshow('', band[-5])
-        # cv.waitKey(0)
+        if otsu:
+            # If Otsu is chosen, dynamic updating of the threshold values will occur; the `low` and `high` variables
+            # now serve as factors that be multiplied respectively to these updating values
+            band = np.copy(to_process)
+            for i, frame in enumerate(to_process):
+                otsu_high, _ = cv.threshold(frame, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
+                otsu_low = 0.5 * otsu_high
+                band[i] = np.where((otsu_low * low <= frame) & (frame <= otsu_high * high), frame, 255)
+        else:
+            # Filter all pixels which are outside the range [low, high] by setting them to white
+            band = np.where((low <= to_process) & (to_process <= high), to_process, 255)
 
         if append:
             self.stacks.append(band)

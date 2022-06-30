@@ -9,6 +9,8 @@ def thresh_1(stack):
     stack.binary_threshold(0, otsu=True)
     contours, _, _ = stack.get_contours(hierarchy=cv.RETR_TREE, append=True)
 
+    stack.intensity_band(1, 1, which=2, otsu=True)
+
     # Print information
     stack.print_info('Thresh-1')
 
@@ -17,11 +19,11 @@ def thresh_1(stack):
 
 def thresh_2(stack):
     stack.gaussian_blur((3, 3), 1)
-    stack.binary_threshold(32)
+    stack.binary_threshold(74)
 
-    contours, _, _ = stack.get_contours(append=True)
+    contours, _, _ = stack.get_contours(hierarchy=cv.RETR_TREE, append=True)
 
-    stack.intensity_band(20, 56, which=2)
+    stack.intensity_band(30, 74, which=2)
 
     # Print information
     stack.print_info('Thresh-2')
