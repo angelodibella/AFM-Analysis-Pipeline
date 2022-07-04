@@ -53,9 +53,22 @@ def to_RGB(stack):
     """TODO: add docstring"""
 
     if len(stack.shape) == 3:
-        return [cv.cvtColor(frame.astype('uint8'), cv.COLOR_GRAY2RGB) for frame in stack]
+        return np.array([cv.cvtColor(frame.astype('uint8'), cv.COLOR_GRAY2RGB) for frame in stack])
     else:
-        return stack
+        return np.array(stack)
+
+
+def adjust_contours(contours):
+    """TODO: add docstring"""
+
+    new_contours = []
+    for stack in contours:
+        fixed = []
+        for contour in stack:
+            fixed.append(contour[:, 0, :])
+        new_contours.append(fixed)
+
+    return new_contours
 
 
 class Stack:
@@ -126,7 +139,7 @@ class Stack:
     def stack_select(self, append, which=-1):
         """ TODO: add docstring
         """
-        return self.stacks[which] if append else self.stack
+        return np.copy(self.stacks[which]) if append else np.copy(self.stack)
 
     def last(self):
         """TODO: add docstring"""
@@ -148,7 +161,7 @@ class Stack:
         print('-' * len(fixture))
 
     def get_contours(self, hierarchy=cv.RETR_EXTERNAL, method=cv.CHAIN_APPROX_NONE, inv=True,
-                     coeffs=[0.299, 0.587, 0.114], append=False):
+                     coeffs=[0.299, 0.587, 0.114], append=False, color=(255, 255, 255)):
         """TODO: add docstring"""
 
         # If the image is not greyscale, then make it
@@ -166,7 +179,7 @@ class Stack:
         out_stack = np.zeros_like(to_process)
         for i, frame in enumerate(to_process):
             contour, hier = cv.findContours(frame, hierarchy, method)
-            cv.drawContours(out_stack[i], contour, -1, (255, 255, 255), 1)
+            cv.drawContours(out_stack[i], contour, -1, color, 1)
             contours.append(contour)
             hiers.append(hier)
 
@@ -177,6 +190,13 @@ class Stack:
             self.contours.append(contours)
 
         return contours, hiers, out_stack
+
+    def get_contour_data(self, which=-1):
+        """TODO: add docstring"""
+
+        assert self.contours, 'Contours have to be detected at least once'
+
+        # TODO: implement `get_contour_data`
 
     def copy(self):
         """Returns a deep copy of the current stack object.
@@ -211,6 +231,26 @@ class Stack:
 
         self.stacks.append(stack)
         self.info.append(info)
+
+    def add_contours(self, contours, which=-1, append=True, color=(255, 255, 255)):
+        """TODO: add docstring"""
+
+        # Select the image to process
+        to_process = self.stack_select(append=append, which=which)
+
+        # To RGB to highlight contours
+        out_stack = to_RGB(to_process)
+
+        # Draw contours in each frame
+        for i, frame in enumerate(out_stack):
+            cv.drawContours(out_stack[i], contours[i], -1, color, 1)
+
+        if append:
+            self.info.append(f'Drew contours from external source')
+            self.stacks.append(out_stack)
+            self.contours.append(contours)
+
+        return out_stack
 
     # ---------------- Image Processing Methods ----------------
 
@@ -422,7 +462,7 @@ class Stack:
 
         return canny
 
-    def intensity_band(self, low, high, which=-1, coeffs=[0.299, 0.587, 0.114], otsu=False, append=True):
+    def intensity_band(self, low, high, which=-1, coeffs=[0.299, 0.587, 0.114], binary=False, otsu=False, append=True):
         """TODO: add docstring"""
 
         # Select which stack to process
@@ -444,12 +484,19 @@ class Stack:
             # Filter all pixels which are outside the range [low, high] by setting them to white
             band = np.where((low <= to_process) & (to_process <= high), to_process, 255)
 
+        # Turn the band to binary
+        if binary:
+            band = np.where(band < 255, 0, 255).astype('uint8')
+
         if append:
             self.stacks.append(band)
             if which == -1:
                 self.info.append(f'Filtered intensity band in range [{low}, {high}]')
             else:
                 self.info.append(f'Filtered intensity band in range [{low}, {high}] of stack {which + 1}')
+
+            if binary:
+                self.info[-1] += ' and converted it to binary'
 
         return band
 

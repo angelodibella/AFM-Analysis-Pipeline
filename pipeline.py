@@ -5,11 +5,17 @@ COEFFS_1 = [0.34, 0.66, 0.0]
 
 
 def thresh_1(stack):
+    """TODO: finish docstring
+    Probably for thin defects
+    """
+
     stack.gaussian_blur((3, 3), 1)
     stack.binary_threshold(0, otsu=True)
     contours, _, _ = stack.get_contours(hierarchy=cv.RETR_TREE, append=True)
 
-    stack.intensity_band(1, 1, which=2, otsu=True)
+    stack.intensity_band(0.90, 1, which=2, otsu=True)
+
+    stack.add_contours(contours, which=5, color=(255, 0, 0))
 
     # Print information
     stack.print_info('Thresh-1')
@@ -18,12 +24,16 @@ def thresh_1(stack):
 
 
 def thresh_2(stack):
+    """TODO: finish docstring
+    Probably for transmembrane defects
+    """
+
     stack.gaussian_blur((3, 3), 1)
-    stack.binary_threshold(74)
+    stack.intensity_band(0, 0.5, binary=True, otsu=True)
 
     contours, _, _ = stack.get_contours(hierarchy=cv.RETR_TREE, append=True)
 
-    stack.intensity_band(30, 74, which=2)
+    # stack.intensity_band(30, 74, which=2)
 
     # Print information
     stack.print_info('Thresh-2')
