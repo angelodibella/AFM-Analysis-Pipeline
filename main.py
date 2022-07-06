@@ -6,7 +6,7 @@ import image as im
 import pipeline as pl
 
 # Save output?
-save = True if input('Save output files? [y/n] ').lower() == 'y' else False
+save = input('Save output files? [y/n] ').lower() == 'y'
 
 # Define directories
 OUT_DIR = 'Output Images/'
@@ -36,17 +36,17 @@ stack_375nM = im.Stack(PATH_375nM, timings=TIME_375nM, px_xlen=px_len)
 stack_750nM = im.Stack(PATH_750nM, timings=TIME_750nM, px_xlen=px_len)
 
 # Use `thresh_1` pipeline
-thresh_1_375nM = stack_375nM.copy()
-contours_thresh_1_375nM = pl.thresh_1(thresh_1_375nM)
+thin_375nM = stack_375nM.copy()
+pl.thin_defects(thin_375nM)
 
 # Use `thresh_2` pipeline
-thresh_2_375nM = stack_375nM.copy()
-contours_thresh_2_375nM = pl.thresh_2(thresh_2_375nM)
+transmembrane_375nM = stack_375nM.copy()
+pl.transmembrane_defects(transmembrane_375nM)
 
 # Save pipeline info
 if save:
-    thresh_1_375nM.save(STACK_OUT_DIR, 'thresh_1_375nM')
-    thresh_2_375nM.save(STACK_OUT_DIR, 'thresh_2_375nM')
+    thin_375nM.save(STACK_OUT_DIR, 'thin_defects_375nM')
+    transmembrane_375nM.save(STACK_OUT_DIR, 'transmembrane_defects_375nM')
 
 # Calculate average membrane height from grayscale stack, using the image data before the first injection
 mem_375nM = stack_375nM.grayscale(append=False)[:INJ_FRAMES_375nM[0]]
@@ -63,12 +63,13 @@ print(f'375 nM\t{mean_mem_375nM}\t{stdev_mem_375nM}')
 print(f'750 nM\t{mean_mem_750nM}\t{stdev_mem_750nM}')
 
 #################################
-adj_contours_thresh_1_375nM = im.adjust_contours(contours_thresh_1_375nM)[10][11].T
+adj_contours_thin_375nM = im.adjust_contours(thin_375nM.contours[-1])[10][11].T
 
-plt.figure(figsize=(6, 6))
-plt.scatter(adj_contours_thresh_1_375nM[0], adj_contours_thresh_1_375nM[1], marker='s', s=200)
-plt.gca().invert_yaxis()  # coordinates in original stacks are +x (right) +y (down), i.e., origin is upper left
-plt.show()
+
+# plt.figure(figsize=(6, 6))
+# plt.scatter(adj_contours_thin_375nM[0], adj_contours_thin_375nM[1], marker='s', s=200)
+# plt.gca().invert_yaxis()  # coordinates in original stacks are +x (right) +y (down), i.e., origin is upper left
+# plt.show()
 #################################
 
 

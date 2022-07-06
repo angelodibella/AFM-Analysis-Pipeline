@@ -153,7 +153,7 @@ class Stack:
         """TODO: add docstring"""
 
         if sub_fixture != '':
-            sub_fixture += ' '
+            sub_fixture = f"'{sub_fixture}' "
         fixture = f"----------------- Pipeline {sub_fixture}for {self.path.split('/')[-1]} -----------------"
         print('\n' + fixture)
         for i, s in enumerate(self.info):
@@ -198,6 +198,30 @@ class Stack:
 
         # TODO: implement `get_contour_data`
 
+    def get_histogram(self, which='FIX', contours=None):
+        """TODO: add docstring, should get this histogram inside the contours"""
+        pass
+
+    def get_contour_centers(self, which=-1):
+        """TODO: add docstring"""
+
+        # Select which contours to analyze
+        contours_list = self.contours[which]
+
+        # Find centers using image moments
+        centers_list = []
+        for contours in contours_list:
+            centers = []
+            for contour in contours:
+                moment = cv.moments(contour)
+                if moment['m00'] != 0:
+                    cx = int(moment['m10'] / moment['m00'])
+                    cy = int(moment['m01'] / moment['m00'])
+                    centers.append([cx, cy])
+            centers_list.appen(centers)
+
+        return centers_list
+
     def copy(self):
         """Returns a deep copy of the current stack object.
 
@@ -226,12 +250,6 @@ class Stack:
 
     # ------------------- Setter-ish Methods -------------------
 
-    def add(self, stack, info='Add external stack'):
-        """TODO: add docstring"""
-
-        self.stacks.append(stack)
-        self.info.append(info)
-
     def add_contours(self, contours, which=-1, append=True, color=(255, 255, 255)):
         """TODO: add docstring"""
 
@@ -251,6 +269,12 @@ class Stack:
             self.contours.append(contours)
 
         return out_stack
+
+    def add(self, stack, info='Add external stack'):
+        """TODO: add docstring"""
+
+        self.stacks.append(stack)
+        self.info.append(info)
 
     # ---------------- Image Processing Methods ----------------
 
@@ -500,7 +524,7 @@ class Stack:
 
         return band
 
-    def apply(self, func, append=True):
+    def apply(self, func, info='', append=True, **kwargs):
         """Apply external processing function to the last stack in the stack pipeline and add it to the pipeline
         history. If `append` is false, apply external processing function to the first stack in the stack pipeline.
 
@@ -508,9 +532,13 @@ class Stack:
         ----------
         func : callable
             The function that is to be applied to each frame of the last stack in the pipeline.
+        info : str, optional
+            Information of the function to be stored in the pipeline description.
         append : bool, default True
             If true processes the last stack in the stack pipeline and appends to it, if false processes the initial
              stack.
+        **kwargs : optional
+            Additional parameters to be passed to `func`.
 
         Returns
         -------
@@ -522,11 +550,14 @@ class Stack:
         to_process = self.stack_select(append)
         processed = np.copy(to_process)
         for i, frame in enumerate(to_process):
-            processed[i] = func(frame)
+            processed[i] = func(frame, **kwargs)
 
         # Add it to the pipeline history
         if append:
-            self.info.append(f'Apply function {func.__name__} to each frame')
+            if info:
+                self.info.append(info)
+            else:
+                self.info.append(f'Apply function {func.__name__} to each frame')
             self.stacks.append(processed)
 
         return processed

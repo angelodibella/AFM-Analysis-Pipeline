@@ -4,7 +4,7 @@ import cv2 as cv
 COEFFS_1 = [0.34, 0.66, 0.0]
 
 
-def thresh_1(stack):
+def thin_defects(stack):
     """TODO: finish docstring
     Probably for thin defects
     """
@@ -18,27 +18,23 @@ def thresh_1(stack):
     stack.add_contours(contours, which=5, color=(255, 0, 0))
 
     # Print information
-    stack.print_info('Thresh-1')
-
-    return contours
+    stack.print_info('Thin Defects')
 
 
-def thresh_2(stack):
+def transmembrane_defects(stack):
     """TODO: finish docstring
     Probably for transmembrane defects
     """
 
-    stack.gaussian_blur((3, 3), 1)
-    stack.intensity_band(0, 0.5, binary=True, otsu=True)
+    stack.gaussian_blur((13, 13), 1)
+    stack.intensity_band(0, 31, binary=True)
 
-    contours, _, _ = stack.get_contours(hierarchy=cv.RETR_TREE, append=True)
+    contours, _, _ = stack.get_contours(hierarchy=cv.RETR_EXTERNAL, append=True)
 
     # stack.intensity_band(30, 74, which=2)
 
     # Print information
-    stack.print_info('Thresh-2')
-
-    return contours
+    stack.print_info('Transmemebrane Defects')
 
 
 def canny_1(stack):
@@ -49,5 +45,3 @@ def canny_1(stack):
 
     # Print information
     stack.print_info()
-
-    return contours
