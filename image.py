@@ -1,8 +1,9 @@
 import copy
-
 import numpy as np
 import tifffile as tiff
 import cv2 as cv
+
+import track
 
 
 def icc(img):
@@ -202,15 +203,18 @@ class Stack:
         """TODO: add docstring, should get this histogram inside the contours"""
         pass
 
-    def get_contour_centers(self, which=-1):
+    def get_contour_centers(self, which=-1, mask=-1, append=False):
         """TODO: add docstring"""
 
         # Select which contours to analyze
         contours_list = self.contours[which]
 
+        # If `append`, choose to which stack to draw
+        to_draw = to_RGB(self.stacks[mask])
+
         # Find centers using image moments
         centers_list = []
-        for contours in contours_list:
+        for i, contours in enumerate(contours_list):
             centers = []
             for contour in contours:
                 moment = cv.moments(contour)
@@ -218,7 +222,16 @@ class Stack:
                     cx = int(moment['m10'] / moment['m00'])
                     cy = int(moment['m01'] / moment['m00'])
                     centers.append([cx, cy])
-            centers_list.appen(centers)
+
+                    # Draw a circle at the center
+                    if append:
+                        cv.circle(to_draw[i], (cx, cy), 3, (0, 0, 255), -1)
+            centers_list.append(np.array(centers))
+
+        # Draw centers
+        if append:
+            self.stacks.append(to_draw)
+            self.info.append(f'Drew centers of contours {which} of stack {mask}')
 
         return centers_list
 
@@ -523,6 +536,29 @@ class Stack:
                 self.info[-1] += ' and converted it to binary'
 
         return band
+
+    def track_contour(self, contour_loc, which=-1, end_frame=-1, append=True):
+        """TODO: add docstring"""
+
+        # Get index path
+        pointers = track.track_contour(self, contour_loc, which=which, end_frame=end_frame)
+
+        # Get contours to be used
+        all_contours = self.contours[which][contour_loc[0]:end_frame]
+        similar_contours = []
+        for frame, contours in enumerate(all_contours):
+            similar_contours.append(contours[pointers[frame][1]])
+
+        if append:
+            # Draw contour over time
+            images = np.zeros_like(self.stack)
+            for frame, image in enumerate(images[contour_loc[0]:end_frame]):
+                cv.drawContours(images[frame + contour_loc[0]], similar_contours[frame], -1, (255, 255, 255), 1)
+
+            self.stacks.append(images)
+            self.info.append(f'Tracked contours {which} from {contour_loc[0]} to {end_frame}')
+
+        return similar_contours
 
     def apply(self, func, info='', append=True, **kwargs):
         """Apply external processing function to the last stack in the stack pipeline and add it to the pipeline

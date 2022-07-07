@@ -17,6 +17,8 @@ def thin_defects(stack):
 
     stack.add_contours(contours, which=5, color=(255, 0, 0))
 
+    stack.get_contour_centers(append=True)
+
     # Print information
     stack.print_info('Thin Defects')
 
@@ -32,6 +34,10 @@ def transmembrane_defects(stack):
     contours, _, _ = stack.get_contours(hierarchy=cv.RETR_EXTERNAL, append=True)
 
     # stack.intensity_band(30, 74, which=2)
+
+    stack.get_contour_centers(append=True)
+
+    stack.track_contour((30, 11))
 
     # Print information
     stack.print_info('Transmemebrane Defects')
