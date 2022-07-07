@@ -221,11 +221,15 @@ class Stack:
                 if moment['m00'] != 0:
                     cx = int(moment['m10'] / moment['m00'])
                     cy = int(moment['m01'] / moment['m00'])
-                    centers.append([cx, cy])
 
                     # Draw a circle at the center
                     if append:
                         cv.circle(to_draw[i], (cx, cy), 3, (0, 0, 255), -1)
+
+                # FOR DEBUG PURPOSES
+                else:
+                    cx = cy = -1
+                centers.append([cx, cy])
             centers_list.append(np.array(centers))
 
         # Draw centers
@@ -537,14 +541,14 @@ class Stack:
 
         return band
 
-    def track_contour(self, contour_loc, which=-1, end_frame=-1, append=True):
+    def track_contour(self, contour_loc, which=-1, append=True):
         """TODO: add docstring"""
 
         # Get index path
-        pointers = track.track_contour(self, contour_loc, which=which, end_frame=end_frame)
+        pointers = track.track_contour(self, contour_loc, which=which)
 
         # Get contours to be used
-        all_contours = self.contours[which][contour_loc[0]:end_frame]
+        all_contours = self.contours[which][contour_loc[0]:]
         similar_contours = []
         for frame, contours in enumerate(all_contours):
             similar_contours.append(contours[pointers[frame][1]])
@@ -552,11 +556,11 @@ class Stack:
         if append:
             # Draw contour over time
             images = np.zeros_like(self.stack)
-            for frame, image in enumerate(images[contour_loc[0]:end_frame]):
+            for frame, image in enumerate(images[contour_loc[0]:]):
                 cv.drawContours(images[frame + contour_loc[0]], similar_contours[frame], -1, (255, 255, 255), 1)
 
             self.stacks.append(images)
-            self.info.append(f'Tracked contours {which} from {contour_loc[0]} to {end_frame}')
+            self.info.append(f'Tracked contours {which} from {contour_loc[0]}')
 
         return similar_contours
 

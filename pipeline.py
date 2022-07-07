@@ -37,7 +37,7 @@ def transmembrane_defects(stack):
 
     stack.get_contour_centers(append=True)
 
-    stack.track_contour((30, 11))
+    stack.track_contour((39, 25))
 
     # Print information
     stack.print_info('Transmemebrane Defects')
