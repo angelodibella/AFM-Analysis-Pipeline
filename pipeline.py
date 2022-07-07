@@ -29,7 +29,7 @@ def transmembrane_defects(stack):
     """
 
     stack.gaussian_blur((13, 13), 1)
-    stack.intensity_band(0, 31, binary=True)
+    stack.intensity_band(0, 35, binary=True)
 
     contours, _, _ = stack.get_contours(hierarchy=cv.RETR_EXTERNAL, append=True)
 
@@ -37,7 +37,7 @@ def transmembrane_defects(stack):
 
     stack.get_contour_centers(append=True)
 
-    stack.track_contour((39, 25))
+    stack.track_contour((40, 80))
 
     # Print information
     stack.print_info('Transmemebrane Defects')
