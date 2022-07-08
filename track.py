@@ -52,7 +52,7 @@ def track_contour(stack, contour_loc: tuple, which=-1) -> list:
             matches.append(cv.matchShapes(curr_contour, next_contour, cv.CONTOURS_MATCH_I1, 0.0))
 
             # Calculate distance from current to next candidate contour
-            distances.append(np.sum((np.array(center_curr_contour) - np.array(center_next_contour)) ** 2))
+            distances.append(np.sqrt(np.sum((np.array(center_curr_contour) - np.array(center_next_contour)) ** 2)))
 
         # Best next contour selection (BNCS) algorithm
         pointer_indeces.append((next_frame, BNCS_alg(matches, distances)))
