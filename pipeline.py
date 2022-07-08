@@ -1,7 +1,12 @@
 import cv2 as cv
+import numpy as np
+
+import process
+import image as im
 
 # Constants to be used
-COEFFS_1 = [0.34, 0.66, 0.0]
+RED = [1.0, 0.0, 0.0]
+NOBLUE_MORERED = [0.644, 0.356, 0]
 
 
 def thin_defects(stack):
@@ -9,7 +14,7 @@ def thin_defects(stack):
     Probably for thin defects
     """
 
-    stack.gaussian_blur((3, 3), 1)
+    stack.gaussian_blur((3, 3), 1, coeffs=RED)
     stack.binary_threshold(0, otsu=True)
     contours, _, _ = stack.get_contours(hierarchy=cv.RETR_TREE, append=True)
 
@@ -28,23 +33,26 @@ def transmembrane_defects(stack):
     Probably for transmembrane defects
     """
 
-    stack.gaussian_blur((13, 13), 1)
-    stack.intensity_band(0, 35, binary=True)
+    stack.gaussian_blur((13, 13), 1, coeffs=NOBLUE_MORERED)
+    stack.intensity_band(0, 60, binary=True)
 
-    contours, _, _ = stack.get_contours(hierarchy=cv.RETR_EXTERNAL, append=True)
-
-    # stack.intensity_band(30, 74, which=2)
+    stack.get_contours(hierarchy=cv.RETR_EXTERNAL, append=True)
 
     stack.get_contour_centers(append=True)
 
-    stack.track_contour((40, 80))
+    # Track some contours
+    stack.track_contour((13, 5))
+
+    print(type(stack.tracked))
+    print(type(stack.tracked[0]), len(stack.tracked[0]))
+    print(type(stack.tracked[0][1]), np.shape(stack.tracked[0][1]))
 
     # Print information
     stack.print_info('Transmemebrane Defects')
 
 
 def canny_1(stack):
-    stack.gaussian_blur((3, 3), 1, coeffs=COEFFS_1)
+    stack.gaussian_blur((3, 3), 1)
     stack.canny(0, 0)
 
     contours, _, _ = stack.get_contours(append=True)

@@ -59,19 +59,6 @@ def to_RGB(stack):
         return np.array(stack)
 
 
-def adjust_contours(contours):
-    """TODO: add docstring"""
-
-    new_contours = []
-    for stack in contours:
-        fixed = []
-        for contour in stack:
-            fixed.append(contour[:, 0, :])
-        new_contours.append(fixed)
-
-    return new_contours
-
-
 class Stack:
     """Allows for the implementation of an image processing pipeline from an initial stack (TIFF) of images. Each
     method has an optional boolean parameter `append`: if false the initial stack is copied, processed, and returned,
@@ -546,30 +533,6 @@ class Stack:
 
         return band
 
-    def track_contour(self, contour_loc, which=-1, append=True):
-        """TODO: add docstring"""
-
-        # Get index path
-        pointers = track.track_contour(self, contour_loc, which=which)
-
-        # Get contours to be used
-        all_contours = self.contours[which][contour_loc[0]:]
-        similar_contours = []
-        for frame, contours in enumerate(all_contours):
-            similar_contours.append(contours[pointers[frame][1]])
-
-        if append:
-            # Draw contour over time
-            images = np.zeros_like(self.stack)
-            for frame, image in enumerate(images[contour_loc[0]:]):
-                cv.drawContours(images[frame + contour_loc[0]], similar_contours[frame], -1, (255, 255, 255), 1)
-
-            self.stacks.append(images)
-            self.info.append(f'Tracked contours {which} from {contour_loc[0]}')
-            self.tracked.append(similar_contours)
-
-        return similar_contours
-
     def apply(self, func, info='', append=True, **kwargs):
         """Apply external processing function to the last stack in the stack pipeline and add it to the pipeline
         history. If `append` is false, apply external processing function to the first stack in the stack pipeline.
@@ -610,6 +573,29 @@ class Stack:
 
     # ----------------- Image Analysis Methods -----------------
 
+    def track_contour(self, contour_loc, which=-1, append=True):
+        """TODO: add docstring"""
+
+        # Get index path
+        pointers = track.track_contour(self, contour_loc, which=which)
+
+        # Get contours to be used
+        all_contours = self.contours[which][contour_loc[0]:]
+        similar_contours = []
+        for frame, contours in enumerate(all_contours):
+            similar_contours.append(contours[pointers[frame][1]])
+
+        if append:
+            # Draw contour over time
+            images = np.zeros_like(self.stack)
+            for frame, image in enumerate(images[contour_loc[0]:]):
+                cv.drawContours(images[frame + contour_loc[0]], similar_contours[frame], -1, (255, 255, 255), 1)
+
+            self.stacks.append(images)
+            self.info.append(f'Tracked contours {which} from {contour_loc[0]}')
+            self.tracked.append(similar_contours)
+
+        return similar_contours
 
 
 

@@ -4,6 +4,7 @@ import numpy as np
 
 import image as im
 import pipeline as pl
+import process as ps
 
 # Save output?
 save = input('Save output files? [y/n] ').lower() == 'y'
@@ -63,7 +64,7 @@ print(f'375 nM\t{mean_mem_375nM}\t{stdev_mem_375nM}')
 print(f'750 nM\t{mean_mem_750nM}\t{stdev_mem_750nM}')
 
 #################################
-adj_contours_thin_375nM = im.adjust_contours(thin_375nM.contours[-1])[10][11].T
+adj_contours_thin_375nM = ps.adjust_contours(thin_375nM.contours[-1])[10][11].T
 
 
 # plt.figure(figsize=(6, 6))

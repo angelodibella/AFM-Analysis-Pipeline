@@ -2,7 +2,7 @@ import cv2 as cv
 import numpy as np
 
 
-def BNCS_alg(matches, distances, weight_powers=(2, 1.5)):
+def BNCS_alg(matches, distances, weight_powers=(2, 1.6)):
     """TODO: add docstring"""
 
     # To numpy arrays
