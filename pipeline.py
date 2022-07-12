@@ -1,7 +1,9 @@
 import cv2 as cv
 import numpy as np
+import scipy.interpolate as interp
+import matplotlib.pyplot as plt
 
-import process
+import process as ps
 import image as im
 
 # Constants to be used
@@ -43,9 +45,16 @@ def transmembrane_defects(stack):
     # Track some contours
     stack.track_contour((13, 5))
 
-    print(type(stack.tracked))
-    print(type(stack.tracked[0]), len(stack.tracked[0]))
-    print(type(stack.tracked[0][1]), np.shape(stack.tracked[0][1]))
+    # Evaluate spline for tracked contour
+    splines_list = ps.to_splines(stack, smoothing=7)
+    coords_list = ps.evaluate_splines(splines_list)
+
+    # Plot spline
+    plt.figure(figsize=(5, 5))
+    spline = coords_list[0][-1]
+    plt.plot(spline[0], spline[1])
+    plt.gca().invert_yaxis()
+    plt.show()
 
     # Print information
     stack.print_info('Transmemebrane Defects')

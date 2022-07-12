@@ -37,10 +37,6 @@ def track_contour(stack, contour_loc: tuple, which=-1) -> list:
         curr_contour = contours_list[curr_frame][curr_index]
         center_curr_contour = centers_list[curr_frame][curr_index]
 
-        # Calculate region of interest (ROI)
-        # TODO: restrict the search area to a definite region of interest using the extreme points of the current
-        #       contour, such that ROI(next_contours) <- next_contours in the following `for` loop
-
         # Iterate through each contour in the next frame
         matches = []
         distances = []

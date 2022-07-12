@@ -2,8 +2,10 @@ import copy
 import numpy as np
 import tifffile as tiff
 import cv2 as cv
+import scipy.interpolate as interp
 
 import track
+import process as ps
 
 
 def icc(img):
@@ -573,7 +575,7 @@ class Stack:
 
     # ----------------- Image Analysis Methods -----------------
 
-    def track_contour(self, contour_loc, which=-1, append=True):
+    def track_contour(self, contour_loc, which=-1, store=True, append=True):
         """TODO: add docstring"""
 
         # Get index path
@@ -585,6 +587,9 @@ class Stack:
         for frame, contours in enumerate(all_contours):
             similar_contours.append(contours[pointers[frame][1]])
 
+        if store:
+            self.tracked.append(similar_contours)
+
         if append:
             # Draw contour over time
             images = np.zeros_like(self.stack)
@@ -593,9 +598,12 @@ class Stack:
 
             self.stacks.append(images)
             self.info.append(f'Tracked contours {which} from {contour_loc[0]}')
-            self.tracked.append(similar_contours)
 
         return similar_contours
+
+    def spline_tracked_contours(self):
+        """TODO: add docstring"""
+        pass
 
 
 
