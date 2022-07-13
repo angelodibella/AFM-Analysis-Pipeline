@@ -74,7 +74,7 @@ def to_splines(stack, degree=3, smoothing=7, stdev=1):
     return splines_list
 
 
-def evaluate_splines(splines_list, increment=0.001, der=0):
+def evaluate_splines(splines_list, increment=0.0005, der=0):
     """TODO: add docstring"""
 
     # Parameter of spline
@@ -92,7 +92,7 @@ def evaluate_splines(splines_list, increment=0.001, der=0):
     return coords_list
 
 
-def splines_curvature(splines_list, increment=0.001):
+def splines_curvature(splines_list, increment=0.0005):
     """TODO: add docstring, check that splines must be at least parabolic (degree > 1); this is signed curvature"""
 
     # Calculate derivatives of spline, which have the same length
@@ -116,6 +116,10 @@ def splines_curvature(splines_list, increment=0.001):
 
 def animate_contour_spline(splines_list, which, file_name, figsize=(5, 5), sigma=1, cmap='jet', px_xlen=1, px_ylen=1):
     """TODO: add docstring"""
+
+    # Convert pixel scale to micrometers
+    px_xlen /= 1000  # micrometers
+    px_ylen /= 1000  # micrometers
 
     # Evaluate the corresponding coordinates and curvature values
     coords_list = evaluate_splines(splines_list)
@@ -162,10 +166,10 @@ def animate_contour_spline(splines_list, which, file_name, figsize=(5, 5), sigma
             The artist object used for blitting.
         """
         ax.cla()
-        ax.set_xlabel('x (nm)')
-        ax.set_ylabel('y (nm)')
-        ax.set_xlim(np.min(all_x) * px_xlen - 10, np.max(all_x) * px_xlen + 10)
-        ax.set_ylim(np.min(all_y) * px_ylen - 10, np.max(all_y) * px_ylen + 10)
+        ax.set_xlabel(r'x ($\mu$m)')
+        ax.set_ylabel(r'y ($\mu$m)')
+        ax.set_xlim((np.min(all_x) - 10) * px_xlen, (np.max(all_x) + 10) * px_xlen)
+        ax.set_ylim((np.min(all_y) - 10) * px_ylen, (np.max(all_y) + 10) * px_ylen)
         ax.invert_yaxis()
         sc = ax.scatter(splines[n][0] * px_xlen, splines[n][1] * px_ylen, color=mapper.to_rgba(curvatures[n]),
                         marker='.', s=20)
