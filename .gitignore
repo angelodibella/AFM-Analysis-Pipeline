@@ -4,3 +4,4 @@ __pycache__/
 tests/
 Output Images/
 venv/
+Analysis.ipynb

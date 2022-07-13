@@ -100,12 +100,12 @@ def splines_curvature(splines_list, increment=0.001):
             coord_d2 = coords_list_d2[i][j]
 
             # Calculate curvature for current list of coordinates at each point
-            curvature_numerator = coord_d1[0] * coord_d2[1] - coords_d1[1] * coord_d2[0]
+            curvature_numerator = coord_d1[1] * coord_d2[0] - coord_d1[0] * coord_d2[1]
             curvature_denominator = (coord_d1[0] ** 2 + coord_d1[1] ** 2) ** (3 / 2)
             curvatures.append(curvature_numerator / curvature_denominator)
+        curvatures_list.append(curvatures)
 
     return curvatures_list
-
 
 
 def to_snakes(stack):
