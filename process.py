@@ -1,5 +1,6 @@
 import numpy as np
 import scipy.interpolate as interp
+import skimage.segmentation as seg
 
 
 def adjust_contours(contours):
@@ -15,8 +16,9 @@ def adjust_contours(contours):
     return new_contours
 
 
-def to_splines(stack, degree=3, smoothing=6, stdev=1):
-    """Takes a Stack object, and for each of its tracked contours returns a list of splines in the form of (t, c, k),
+def to_splines(stack, degree=3, smoothing=7, stdev=1):
+    """
+    Takes a Stack object, and for each of its tracked contours returns a list of splines in the form of (t, c, k),
     a tuple containing the vector of knots, the B-spline coefficients, and the degree of the coefficients.
 
     Parameters
@@ -25,7 +27,7 @@ def to_splines(stack, degree=3, smoothing=6, stdev=1):
         The stack object that needs to be processed.
     degree : int, default 3
         The degree of the splines, the default is cubic, which is recommanded.
-    smoothing : float, default 6
+    smoothing : float, default 7
         The degree of smoothing of the fit. There is a tradeoff between the closeness and smootheness of fit, however,
         with larger values resulting in a smoother but less accurate fit.
     stdev : float or list, default 1
@@ -66,7 +68,7 @@ def to_splines(stack, degree=3, smoothing=6, stdev=1):
     return splines_list
 
 
-def evaluate_splines(splines_list, increment=0.001):
+def evaluate_splines(splines_list, increment=0.001, der=0):
     """TODO: add docstring"""
 
     # Parameter of spline
@@ -77,11 +79,42 @@ def evaluate_splines(splines_list, increment=0.001):
     for splines in splines_list:
         coords = []
         for spline in splines:
-            x, y = interp.splev(u, spline)
+            x, y = interp.splev(u, spline, der=der)
             coords.append(np.array([x, y]))
         coords_list.append(coords)
 
     return coords_list
+
+
+def splines_curvature(splines_list, increment=0.001):
+    """TODO: add docstring, check that splines must be at least parabolic (degree > 1); this is signed curvature"""
+
+    # Calculate derivatives of spline, which have the same length
+    coords_list_d1 = evaluate_splines(splines_list, increment=increment, der=1)
+    coords_list_d2 = evaluate_splines(splines_list, increment=increment, der=2)
+
+    curvatures_list = []
+    for i, coords_d1 in enumerate(coords_list_d1):
+        curvatures = []
+        for j, coord_d1 in enumerate(coords_d1):
+            coord_d2 = coords_list_d2[i][j]
+
+            # Calculate curvature for current list of coordinates at each point
+            curvature_numerator = coord_d1[0] * coord_d2[1] - coords_d1[1] * coord_d2[0]
+            curvature_denominator = (coord_d1[0] ** 2 + coord_d1[1] ** 2) ** (3 / 2)
+            curvatures.append(curvature_numerator / curvature_denominator)
+
+    return curvatures_list
+
+
+
+def to_snakes(stack):
+    """TODO: add docstring"""
+
+    # TODO: implement active contours with scikit-image; this should act on any of the images in the stack,
+    #       not limited to the binary contour image
+
+    pass
 
 
 def remove_border(stack):

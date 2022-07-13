@@ -46,7 +46,7 @@ def transmembrane_defects(stack):
     stack.track_contour((13, 5))
 
     # Evaluate spline for tracked contour
-    splines_list = ps.to_splines(stack, smoothing=7)
+    splines_list = ps.to_splines(stack)
     coords_list = ps.evaluate_splines(splines_list)
 
     # Plot spline
