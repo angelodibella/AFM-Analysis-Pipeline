@@ -2,7 +2,6 @@ import numpy as np
 import scipy.interpolate as interp
 import skimage.segmentation as seg
 
-
 import matplotlib.animation as animation
 import matplotlib.cm as cm
 import matplotlib.colors as colors
@@ -115,7 +114,7 @@ def splines_curvature(splines_list, increment=0.001):
     return curvatures_list
 
 
-def animate_contour_spline(splines_list, which, file_name, figsize=(5, 5), sigma=1, cmap='jet'):
+def animate_contour_spline(splines_list, which, file_name, figsize=(5, 5), sigma=1, cmap='jet', px_xlen=1, px_ylen=1):
     """TODO: add docstring"""
 
     # Evaluate the corresponding coordinates and curvature values
@@ -163,10 +162,13 @@ def animate_contour_spline(splines_list, which, file_name, figsize=(5, 5), sigma
             The artist object used for blitting.
         """
         ax.cla()
-        ax.set_xlim(np.min(all_x) - 10, np.max(all_x) + 10)
-        ax.set_ylim(np.min(all_y) - 10, np.max(all_y) + 10)
+        ax.set_xlabel('x (nm)')
+        ax.set_ylabel('y (nm)')
+        ax.set_xlim(np.min(all_x) * px_xlen - 10, np.max(all_x) * px_xlen + 10)
+        ax.set_ylim(np.min(all_y) * px_ylen - 10, np.max(all_y) * px_ylen + 10)
         ax.invert_yaxis()
-        sc = ax.scatter(splines[n][0], splines[n][1], color=mapper.to_rgba(curvatures[n]), marker='.', s=20)
+        sc = ax.scatter(splines[n][0] * px_xlen, splines[n][1] * px_ylen, color=mapper.to_rgba(curvatures[n]),
+                        marker='.', s=20)
 
         return sc,
 
@@ -174,6 +176,7 @@ def animate_contour_spline(splines_list, which, file_name, figsize=(5, 5), sigma
     ani = animation.FuncAnimation(fig, animate, len(splines), interval=10, blit=True)
 
     # Write animation to video (uses FFMpeg)
+    print(f'\nWriting animation... (Output Images/{file_name}.mp4)')
     writervideo = animation.FFMpegWriter(fps=5)
     ani.save(f'Output Images/{file_name}.mp4', writer=writervideo, dpi=300)
 
