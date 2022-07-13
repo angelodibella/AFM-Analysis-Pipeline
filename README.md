@@ -1,3 +1,2 @@
 # AFM Analysis Pipeline
-An open-source project that offers an environment in which to construct atomic 
-force microscopy (AFM) image data processing pipelines.
+This repository is part of the biophysics summer studentship 2022 at University College London, under the supervision of Professor Bart Hoogenboom.
