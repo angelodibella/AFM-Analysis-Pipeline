@@ -1,6 +1,7 @@
 import cv2 as cv
 import numpy as np
 import scipy.interpolate as interp
+
 import matplotlib.animation as animation
 import matplotlib.cm as cm
 import matplotlib.colors as colors
@@ -51,45 +52,9 @@ def transmembrane_defects(stack):
 
     # Evaluate spline for tracked contour
     splines_list = ps.to_splines(stack)
-    coords_list = ps.evaluate_splines(splines_list)
-    curvatures_list = ps.splines_curvature(splines_list)
 
-    # Plot spline
-    fig = plt.figure(figsize=(5, 5))
-    ax = fig.subplots(1, 1)
-
-    splines = coords_list[0]
-    curvatures = curvatures_list[0]
-
-    all_x = []
-    all_y = []
-    for spline in splines:
-        all_x.append(spline[0])
-        all_y.append(spline[1])
-    all_x = np.array(all_x)
-    all_y = np.array(all_y)
-
-    # Create color map for curvature
-    minima, maxima = (np.min(curvatures), np.max(curvatures))
-    norm = colors.Normalize(vmin=-1, vmax=1, clip=True)
-    mapper = cm.ScalarMappable(norm=norm, cmap='jet')
-    plt.colorbar(mapper)
-
-    def animate(n):
-        ax.cla()
-        ax.set_xlim(np.min(all_x) - 10, np.max(all_x) + 10)
-        ax.set_ylim(np.min(all_y) - 10, np.max(all_y) + 10)
-        ax.invert_yaxis()
-        sc = ax.scatter(splines[n][0], splines[n][1], color=mapper.to_rgba(curvatures[n]), marker='.', s=20)
-
-        return sc,
-
-    # Create animation
-    ani = animation.FuncAnimation(fig, animate, len(splines), interval=10, blit=True)
-
-    # Write animation to video
-    writervideo = animation.FFMpegWriter(fps=5)
-    ani.save('Output Images/trans_13_5.mp4', writer=writervideo, dpi=300)
+    # Animate the spline with curvature
+    ps.animate_contour_spline(splines_list, 0, 'trans_13_5', sigma=1.2)
 
     # Print information
     stack.print_info('Transmemebrane Defects')

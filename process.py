@@ -3,6 +3,13 @@ import scipy.interpolate as interp
 import skimage.segmentation as seg
 
 
+import matplotlib.animation as animation
+import matplotlib.cm as cm
+import matplotlib.colors as colors
+import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+
 def adjust_contours(contours):
     """TODO: add docstring"""
 
@@ -106,6 +113,69 @@ def splines_curvature(splines_list, increment=0.001):
         curvatures_list.append(curvatures)
 
     return curvatures_list
+
+
+def animate_contour_spline(splines_list, which, file_name, figsize=(5, 5), sigma=1, cmap='jet'):
+    """TODO: add docstring"""
+
+    # Evaluate the corresponding coordinates and curvature values
+    coords_list = evaluate_splines(splines_list)
+    curvatures_list = splines_curvature(splines_list)
+
+    # Initialize the figure
+    fig = plt.figure(figsize=figsize)
+    ax = fig.subplots(1, 1)
+
+    # Get the desired contour out of the tracked ones
+    splines = coords_list[which]
+    curvatures = curvatures_list[which]
+
+    # Get all the x- and y-values
+    all_x = []
+    all_y = []
+    for spline in splines:
+        all_x.append(spline[0])
+        all_y.append(spline[1])
+    all_x = np.array(all_x)
+    all_y = np.array(all_y)
+
+    # Since there may be outliers of high leverage, consider only the curvature values that are in the
+    # range +/- (sigma * standard deviation), where the (sample) standard deviation is that of the curvature values,
+    # and sigma is a multiplier chosen by the user for the specific contour
+    curvature_range = sigma * np.std(curvatures, ddof=1)
+
+    # Create color map for curvature
+    norm = colors.Normalize(vmin=-curvature_range, vmax=curvature_range, clip=True)
+    mapper = cm.ScalarMappable(norm=norm, cmap=cmap)
+    plt.colorbar(mapper)
+
+    def animate(n):
+        """Update the scatter plot.
+
+        Parameters
+        ----------
+        n : int
+            Current frame in the series.
+
+        Returns
+        -------
+        matplotlib.collections.PathCollection
+            The artist object used for blitting.
+        """
+        ax.cla()
+        ax.set_xlim(np.min(all_x) - 10, np.max(all_x) + 10)
+        ax.set_ylim(np.min(all_y) - 10, np.max(all_y) + 10)
+        ax.invert_yaxis()
+        sc = ax.scatter(splines[n][0], splines[n][1], color=mapper.to_rgba(curvatures[n]), marker='.', s=20)
+
+        return sc,
+
+    # Create animation
+    ani = animation.FuncAnimation(fig, animate, len(splines), interval=10, blit=True)
+
+    # Write animation to video (uses FFMpeg)
+    writervideo = animation.FFMpegWriter(fps=5)
+    ani.save(f'Output Images/{file_name}.mp4', writer=writervideo, dpi=300)
 
 
 def to_snakes(stack):
