@@ -98,6 +98,8 @@ class Stack:
 	    Description of each step in the pipeline.
 	tracked : list
 	    Individually tracked contours.
+	tracked_positions : list
+	    Positions of first instances of individually tracked contours
 	"""
 
     RETR_MODES = {0: 'external retrieval', 1: 'list retrieval', 2: 'two-level retrieval', 3: 'tree retrieval',
@@ -128,6 +130,7 @@ class Stack:
 
         # Keep track of individual contours
         self.tracked = []
+        self.tracked_positions = []
 
     # ------------------- Getter-ish Methods -------------------
 
@@ -589,6 +592,7 @@ class Stack:
 
         if store:
             self.tracked.append(similar_contours)
+            self.tracked_positions.append(contour_loc)
 
         if append:
             # Draw contour over time
@@ -600,10 +604,6 @@ class Stack:
             self.info.append(f'Tracked contours {which} from {contour_loc[0]}')
 
         return similar_contours
-
-    def spline_tracked_contours(self):
-        """TODO: add docstring"""
-        pass
 
 
 
