@@ -31,6 +31,11 @@ class Spline:
 
     def __init__(self, stack, degree=3, smoothing=7, stdev=1, increment=0.0005):
 
+        self.degree = degree
+        self.smoothing = smoothing
+        self.stdev = stdev
+        self.increment = increment
+
         # Retrieve the tracked contours
         self.tracked = stack.tracked
         self.tracked_positions = stack.tracked_positions
@@ -41,6 +46,9 @@ class Spline:
 
         self.px_xlen = stack.px_xlen
         self.px_ylen = stack.px_ylen
+
+        # Store the map between values of the spline (coordinates or derivatives) across frames
+        self.map = []
 
         self.to_splines(degree, smoothing, stdev, append=True)
         self.evaluate_splines(increment=increment, append=True)
@@ -115,6 +123,11 @@ class Spline:
                 coords.append(np.array([x, y]))
             coords_list.append(coords)
 
+        # Generate map if necessary, then apply it
+        if der == 0:
+            self.generate_map(coords_list)
+        coords_list = self.apply_map(coords_list)
+
         if append:
             self.coords_list = coords_list
 
@@ -149,6 +162,8 @@ class Spline:
 
     def animate_contour_spline(self, which, file_name, figsize=(5, 5), sigma=1, cmap='jet', start=100):
         """TODO: add docstring"""
+
+        # TODO: fix scaling to micrometers, perhaps make the choice of nm or um automatically
 
         # Treat file name
         if file_name:
@@ -221,10 +236,46 @@ class Spline:
         writervideo = animation.FFMpegWriter(fps=5)
         ani.save(f'Output Images/{file_name}.mp4', writer=writervideo, dpi=300)
 
+    # -------------------------------- Mapping Methods --------------------------------
 
-def remove_border(stack):
-    pass
+    def generate_map(self, coords_list):
+        """TODO: add docstring"""
 
+        # Iterate through the coordinates, finding the minimum squared distance
+        min_diffs_list = []
+        for i, coords in enumerate(coords_list):
+            min_diffs = []
+            for frame, curr_coord in enumerate(coords[:-1]):
+                # Treat current coordinate list if it is not the first in the succession for the current tracked spline
+                if min_diffs:
+                    curr_coord = np.roll(curr_coord, min_diffs[frame - 1], axis=1)
 
-def calculate_curvature(stack):
-    pass
+                next_coord = coords[frame + 1]
+                sum_squared_distances = []
+                for d in range(len(curr_coord[0])):
+                    # Shift the spline by i
+                    next_candidate_x = np.roll(next_coord[0], d)
+                    next_candidate_y = np.roll(next_coord[1], d)
+                    diff_x = next_candidate_x - curr_coord[0]
+                    diff_y = next_candidate_y - curr_coord[1]
+
+                    # Append the current squared distance
+                    sum_squared_distances.append(np.sum(diff_x ** 2 + diff_y ** 2))
+                min_diffs.append(np.argmin(sum_squared_distances))
+            min_diffs_list.append(min_diffs)
+
+        self.map = min_diffs_list
+
+    def apply_map(self, coords_list):
+        """TODO: add docstring"""
+
+        # Apply the map for each pair (x, y) where x and y are lists respectively
+        new_coords_list = []
+        for i, coords in enumerate(coords_list):
+            new_coords = [coords[0]]
+            for frame, coord in enumerate(coords[1:]):
+                new_coord = np.roll(coord, self.map[i][frame], axis=1)  # apply the map
+                new_coords.append(new_coord)
+            new_coords_list.append(new_coords)
+
+        return new_coords_list

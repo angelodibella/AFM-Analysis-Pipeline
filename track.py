@@ -56,11 +56,6 @@ def track_contour(stack, contour_loc: tuple, which=-1) -> list:
     return pointer_indeces
 
 
-def sort_spline_NN():
-    """TODO: add docstring, sort spline with a nearest neighbor (NN) algorithm"""
-    pass
-
-
 
 
 
