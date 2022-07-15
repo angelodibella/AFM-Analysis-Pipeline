@@ -56,6 +56,8 @@ class Spline:
         self.evaluate_splines(increment=increment, append=True)
         self.splines_curvature(increment=increment)
 
+    # -------------------------------- Numerical Methods --------------------------------
+
     def to_splines(self, degree, smoothing, stdev, append=False):
         """
         Takes a Stack object, and for each of its tracked contours returns a list of splines in the form of (t, c, k),
@@ -160,7 +162,9 @@ class Spline:
 
         return curvatures_list
 
-    def animate_spline(self, which, file_name, figsize=None, sigma=1, cmap='jet', start=1000):
+    # -------------------------------- Graphical Methods --------------------------------
+
+    def animate_spline(self, which, file_name, figsize=None, sigma=1, cmap='jet', start=1000, frame_time=True):
         """TODO: add docstring"""
 
         # TODO: fix scaling to micrometers, perhaps make the choice of nm or um automatically
@@ -216,6 +220,10 @@ class Spline:
                 The artist object used for blitting.
             """
             ax.cla()
+            if frame_time:
+                ax.set_title(f'Membrane Defect at Frame {n}')
+            else:
+                ax.set_title(f'Membrane Defect at Time {n * self.timings} s')
             ax.set_xlabel(r'x ($\mu$m)')
             ax.set_ylabel(r'y ($\mu$m)')
             ax.set_xlim((np.min(all_x) - 10) * px_xlen_um, (np.max(all_x) + 10) * px_xlen_um)
@@ -238,7 +246,7 @@ class Spline:
 
         return ani
 
-    def compare_splines(self, which, positions, file_name, figsize=None, interval=50, cmap='jet'):
+    def compare_splines(self, which, positions, file_name, figsize=None, interval=50, cmap='jet', frame_time=True):
         """Compare two splines with the current map.
 
         Parameters
@@ -255,11 +263,17 @@ class Spline:
             Interval between points where to draw the connecting lines.
         cmap : str
             Color map for displacement vectors
+        frame_time : bool, default True
+            Whether the time is displayed as frames in the stack or the true time in seconds.
         """
 
         # Select the splines
         coord_1 = self.coords_list[which][np.min(positions)]
         coord_2 = self.coords_list[which][np.max(positions)]
+
+        # Get pixel scale in micrometers
+        px_xlen_um = self.px_xlen / 1000  # micrometers
+        px_ylen_um = self.px_ylen / 1000  # micrometers
 
         # Get the displacements
         displacements = []
@@ -278,8 +292,8 @@ class Spline:
 
         # Initialize figure
         fig = plt.figure() if figsize is None else plt.figure(figsize=figsize)
-        plt.xlabel(r'x (nm)')
-        plt.ylabel(r'y (nm)')
+        plt.xlabel(r'x ($\mu$m)')
+        plt.ylabel(r'y ($\mu$m)')
         plt.gca().invert_yaxis()
 
         # Create color map
@@ -291,15 +305,17 @@ class Spline:
         # Plot displacement lines
         for i, pair_1 in enumerate(coord_1.T[::interval]):
             pair_2 = coord_2.T[::interval][i]
-            plt.plot(np.array([pair_1[0], pair_2[0]]) * self.px_xlen, np.array([pair_1[1], pair_2[1]]) * self.px_ylen,
+            plt.plot(np.array([pair_1[0], pair_2[0]]) * px_xlen_um, np.array([pair_1[1], pair_2[1]]) * px_ylen_um,
                      color=mapper.to_rgba(displacements[i]))
 
         # Plot the two splines
         # TODO: change from frame to time interval from stack.timings
-        plt.scatter(coord_1[0] * self.px_xlen, coord_1[1] * self.px_ylen, c='#000000',
-                    label=f'Frame {np.min(positions)}', s=10)
-        plt.scatter(coord_2[0] * self.px_xlen, coord_2[1] * self.px_ylen, c='#808080',
-                    label=f'Frame {np.max(positions)}', s=10)
+        label_1 = f'Frame {np.min(positions)}' if frame_time else f'Time {np.min(positions) * self.timings} s'
+        plt.scatter(coord_1[0] * px_xlen_um, coord_1[1] * px_ylen_um, c='#000000',
+                    label=label_1, s=10)
+        label_2 = f'Frame {np.max(positions)}' if frame_time else f'Time {np.max(positions) * self.timings} s'
+        plt.scatter(coord_2[0] * px_xlen_um, coord_2[1] * px_ylen_um, c='#808080',
+                    label=label_2, s=10)
         plt.legend()
 
         print(f'\nSaving comparison... (Output Images/Comparisons/'

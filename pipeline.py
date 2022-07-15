@@ -47,8 +47,8 @@ def transmembrane_defects(stack):
     spline = ps.Spline(stack)
 
     # Animate the spline with curvature
-    # spline.animate_spline(0, 'trans', sigma=1.2)
-    # spline.animate_spline(1, 'trans', sigma=1.3)
+    spline.animate_spline(0, 'trans', sigma=1.2)
+    spline.animate_spline(1, 'trans', sigma=1.3)
 
     # Compare two splines
     spline.compare_splines(0, (10, 11), 'trans')
