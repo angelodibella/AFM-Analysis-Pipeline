@@ -2,10 +2,8 @@ import copy
 import numpy as np
 import tifffile as tiff
 import cv2 as cv
-import scipy.interpolate as interp
 
 import track
-import process as ps
 
 
 def icc(img):
@@ -94,12 +92,16 @@ class Stack:
 	    Contains the image stacks at each stage in the pipeline.
 	contours : list of int
 	    Contains the contours retrieved when attempting to find them.
+	centers : list of int
+	    Centers of the contours.
 	info : list of str
 	    Description of each step in the pipeline.
 	tracked : list
 	    Individually tracked contours.
 	tracked_positions : list
 	    Positions of first instances of individually tracked contours
+	tracked_centers : list
+	    Ordered centers of tracked contours.
 	"""
 
     RETR_MODES = {0: 'external retrieval', 1: 'list retrieval', 2: 'two-level retrieval', 3: 'tree retrieval',
@@ -122,8 +124,9 @@ class Stack:
         # WARNING: list of ndarray objects, shape of stacks might vary throughout it
         self.stacks = [np.copy(self.stack)]
 
-        # Record contours
+        # Record contours and their centers
         self.contours = []
+        self.centers = []
 
         # Keep track of processes
         self.info = []
@@ -131,6 +134,7 @@ class Stack:
         # Keep track of individual contours
         self.tracked = []
         self.tracked_positions = []
+        self.tracked_centers = []
 
     # ------------------- Getter-ish Methods -------------------
 
@@ -228,6 +232,9 @@ class Stack:
                     cx = cy = -1
                 centers.append([cx, cy])
             centers_list.append(np.array(centers))
+
+        # Store centers globally
+        self.centers.append(centers_list)
 
         # Draw centers
         if append:
@@ -586,13 +593,18 @@ class Stack:
 
         # Get contours to be used
         all_contours = self.contours[which][contour_loc[0]:]
+        all_centers = self.centers[which][contour_loc[0]:]
+
         similar_contours = []
+        similar_centers = []
         for frame, contours in enumerate(all_contours):
             similar_contours.append(contours[pointers[frame][1]])
+            similar_centers.append(all_centers[frame][pointers[frame][1]])
 
         if store:
             self.tracked.append(similar_contours)
             self.tracked_positions.append(contour_loc)
+            self.tracked_centers.append(similar_centers)
 
         if append:
             # Draw contour over time
@@ -603,7 +615,7 @@ class Stack:
             self.stacks.append(images)
             self.info.append(f'Tracked contours {which} from {contour_loc[0]}')
 
-        return similar_contours
+        return similar_contours, similar_centers
 
 
 
