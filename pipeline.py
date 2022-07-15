@@ -52,7 +52,11 @@ def transmembrane_defects(stack):
 
     # Compare splines
     spline.compare_splines(0, (10, 11), 'trans')
+    spline.compare_splines(0, (10, 12), 'trans')
+    spline.compare_splines(0, (10, 13), 'trans')
     spline.compare_splines(0, (10, 14), 'trans')
+    spline.compare_splines(0, (10, 15), 'trans')
+    spline.compare_splines(0, (10, 16), 'trans')
     spline.compare_splines(0, (10, 30), 'trans')
 
     spline.compare_splines(1, (10, 11), 'trans')

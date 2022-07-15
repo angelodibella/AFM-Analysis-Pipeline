@@ -299,8 +299,9 @@ class Spline:
         plt.ylabel(r'y ($\mu$m)')
         plt.gca().invert_yaxis()
 
-        # Create color map
-        displacement_range = np.max(np.abs(displacements))
+        # Create color map (WARNING: does not support px_xlen != px_ylen)
+        # TODO: display color bar in nm instead of um, and add title to it
+        displacement_range = np.max(np.abs(displacements)) * px_xlen_um
         norm = colors.Normalize(vmin=-displacement_range, vmax=displacement_range, clip=True)
         mapper = cm.ScalarMappable(norm=norm, cmap=cmap)
         plt.colorbar(mapper)
@@ -309,7 +310,7 @@ class Spline:
         for i, pair_1 in enumerate(coord_1.T[::interval]):
             pair_2 = coord_2.T[::interval][i]
             plt.plot(np.array([pair_1[0], pair_2[0]]) * px_xlen_um, np.array([pair_1[1], pair_2[1]]) * px_ylen_um,
-                     color=mapper.to_rgba(displacements[i]))
+                     color=mapper.to_rgba(displacements[i] * px_xlen_um))
 
         # Plot the two splines
         label_1 = f'Frame {np.min(positions)}' if frame_time else f'Time {np.min(positions) * self.timings} s'
