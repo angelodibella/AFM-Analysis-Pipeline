@@ -1,6 +1,4 @@
 import cv2 as cv
-import numpy as np
-import scipy.interpolate as interp
 
 import process as ps
 import image as im
@@ -49,8 +47,12 @@ def transmembrane_defects(stack):
     spline = ps.Spline(stack)
 
     # Animate the spline with curvature
-    spline.animate_contour_spline(0, 'trans', sigma=1.2)
-    spline.animate_contour_spline(1, 'trans', sigma=1.3)
+    # spline.animate_spline(0, 'trans', sigma=1.2)
+    # spline.animate_spline(1, 'trans', sigma=1.3)
+
+    # Compare two splines
+    spline.compare_splines(0, (10, 11), 'trans')
+    spline.compare_splines(0, (10, 14), 'trans')
 
     # Print information
     stack.print_info('Transmemebrane Defects')

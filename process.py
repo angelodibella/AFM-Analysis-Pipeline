@@ -39,6 +39,7 @@ class Spline:
         # Retrieve the tracked contours
         self.tracked = stack.tracked
         self.tracked_positions = stack.tracked_positions
+        self.centers = stack.tracked_centers
 
         self.splines_list = []
         self.coords_list = []
@@ -46,6 +47,7 @@ class Spline:
 
         self.px_xlen = stack.px_xlen
         self.px_ylen = stack.px_ylen
+        self.timings = stack.timings
 
         # Store the map between values of the spline (coordinates or derivatives) across frames
         self.map = []
@@ -61,8 +63,6 @@ class Spline:
 
         Parameters
         ----------
-        stack : image.Stack
-            The stack object that needs to be processed.
         degree : int, default 3
             The degree of the splines, the default is cubic, which is recommanded.
         smoothing : float, default 7
@@ -160,7 +160,7 @@ class Spline:
 
         return curvatures_list
 
-    def animate_contour_spline(self, which, file_name, figsize=(5, 5), sigma=1, cmap='jet', start=100):
+    def animate_spline(self, which, file_name, figsize=None, sigma=1, cmap='jet', start=1000):
         """TODO: add docstring"""
 
         # TODO: fix scaling to micrometers, perhaps make the choice of nm or um automatically
@@ -172,11 +172,11 @@ class Spline:
             file_name += f'{self.tracked_positions[which][0]}_{self.tracked_positions[which][1]}'
 
         # Convert pixel scale to micrometers
-        self.px_xlen /= 1000  # micrometers
-        self.px_ylen /= 1000  # micrometers
+        px_xlen_um = self.px_xlen / 1000  # micrometers
+        px_ylen_um = self.px_ylen / 1000  # micrometers
 
         # Initialize the figure
-        fig = plt.figure(figsize=figsize)
+        fig = plt.figure() if figsize is None else plt.figure(figsize=figsize)
         ax = fig.subplots(1, 1)
 
         # Get the desired contour out of the tracked ones
@@ -218,12 +218,12 @@ class Spline:
             ax.cla()
             ax.set_xlabel(r'x ($\mu$m)')
             ax.set_ylabel(r'y ($\mu$m)')
-            ax.set_xlim((np.min(all_x) - 10) * self.px_xlen, (np.max(all_x) + 10) * self.px_xlen)
-            ax.set_ylim((np.min(all_y) - 10) * self.px_ylen, (np.max(all_y) + 10) * self.px_ylen)
+            ax.set_xlim((np.min(all_x) - 10) * px_xlen_um, (np.max(all_x) + 10) * px_xlen_um)
+            ax.set_ylim((np.min(all_y) - 10) * px_ylen_um, (np.max(all_y) + 10) * px_ylen_um)
             ax.invert_yaxis()
-            sc = ax.scatter(splines[n][0] * self.px_xlen, splines[n][1] * self.px_ylen,
+            sc = ax.scatter(splines[n][0] * px_xlen_um, splines[n][1] * px_ylen_um,
                             color=mapper.to_rgba(curvatures[n]), marker='.', s=20)
-            point = ax.scatter(splines[n][0][start] * self.px_xlen, splines[n][1][start] * self.px_ylen, c='#DE88EA',
+            point = ax.scatter(splines[n][0][start] * px_xlen_um, splines[n][1][start] * px_ylen_um, c='#DE88EA',
                                marker='X', s=15, linewidths=0.2)
 
             return sc, point,
@@ -232,9 +232,79 @@ class Spline:
         ani = animation.FuncAnimation(fig, animate, len(splines), interval=10, blit=True)
 
         # Write animation to video (uses FFMpeg)
-        print(f'\nWriting animation... (Output Images/{file_name}.mp4)')
+        print(f'\nWriting animation... (Output Images/Animations/{file_name}.mp4)')
         writervideo = animation.FFMpegWriter(fps=5)
-        ani.save(f'Output Images/{file_name}.mp4', writer=writervideo, dpi=300)
+        ani.save(f'Output Images/Animations/{file_name}.mp4', writer=writervideo, dpi=300)
+
+        return ani
+
+    def compare_splines(self, which, positions, file_name, figsize=None, interval=50, cmap='jet'):
+        """Compare two splines with the current map.
+
+        Parameters
+        ----------
+        which : int
+            Which tracked spline to compare.
+        positions : tuple of int
+            The two time positions of the spline.
+        file_name : str
+            Prefix of the file name of the saved figure.
+        figsize : tuple of int, optional
+            The size of the figure.
+        interval : int, default 50
+            Interval between points where to draw the connecting lines.
+        cmap : str
+            Color map for displacement vectors
+        """
+
+        # Select the splines
+        coord_1 = self.coords_list[which][np.min(positions)]
+        coord_2 = self.coords_list[which][np.max(positions)]
+
+        # Get the displacements
+        displacements = []
+        for i, pair_1 in enumerate(coord_1.T):
+            pair_2 = coord_2.T[i]
+            displacements.append(np.sqrt(np.sum((pair_2 - pair_1) ** 2)))
+
+            # TODO: implement method to verify the sign of propagation (+ if expanding, - if retracting)
+            # # Check which is closer to the center
+            # d_2 = np.sum((pair_2 - self.centers[which][positions[0]]) ** 2)
+            # d_1 = np.sum((pair_1 - self.centers[which][positions[0]]) ** 2)
+            # print(d_1, d_2)
+            # if d_2 < d_1:
+            #     displacements[-1] = -displacements[-1]
+        displacements = displacements[::interval]
+
+        # Initialize figure
+        fig = plt.figure() if figsize is None else plt.figure(figsize=figsize)
+        plt.xlabel(r'x (nm)')
+        plt.ylabel(r'y (nm)')
+        plt.gca().invert_yaxis()
+
+        # Create color map
+        displacement_range = np.max(np.abs(displacements))
+        norm = colors.Normalize(vmin=-displacement_range, vmax=displacement_range, clip=True)
+        mapper = cm.ScalarMappable(norm=norm, cmap=cmap)
+        plt.colorbar(mapper)
+
+        # Plot displacement lines
+        for i, pair_1 in enumerate(coord_1.T[::interval]):
+            pair_2 = coord_2.T[::interval][i]
+            plt.plot(np.array([pair_1[0], pair_2[0]]) * self.px_xlen, np.array([pair_1[1], pair_2[1]]) * self.px_ylen,
+                     color=mapper.to_rgba(displacements[i]))
+
+        # Plot the two splines
+        # TODO: change from frame to time interval from stack.timings
+        plt.scatter(coord_1[0] * self.px_xlen, coord_1[1] * self.px_ylen, c='#000000',
+                    label=f'Frame {np.min(positions)}', s=10)
+        plt.scatter(coord_2[0] * self.px_xlen, coord_2[1] * self.px_ylen, c='#808080',
+                    label=f'Frame {np.max(positions)}', s=10)
+        plt.legend()
+
+        print(f'\nSaving comparison... (Output Images/Comparisons/'
+              f'{file_name}_{which}_({positions[0]}_{positions[1]}).png)')
+        plt.savefig(f'Output Images/Comparisons/{file_name}_{which}_({positions[0]}_{positions[1]}).png', dpi=300)
 
     # -------------------------------- Mapping Methods --------------------------------
 
@@ -279,3 +349,15 @@ class Spline:
             new_coords_list.append(new_coords)
 
         return new_coords_list
+
+    def perpendicular_gradient_map(self):
+        """TODO: add docstring"""
+
+        # TODO: implement `perpendicular_gradient_map`; this should calculate, for every point in every spline, the
+        #       next (in the successive frame) best point, preferring the points that are closest to the perpendicular
+        #       to the gradient of the spline at the current point
+
+        pass
+
+
+
