@@ -258,16 +258,17 @@ class Stack:
         """TODO: add docstring"""
 
         if frame_num:
-            print(f"\nSaving stack at position {frame_num}... ({{directory+name+'.tiff'}})")
+            print(f"\nSaving stack at position {frame_num}... ({{directory+name+'.tiff'}})", end=' ')
             tiff.imwrite(directory + name + '.tiff', self.stacks[frame_num], imagej=True)
         else:
-            print(f"\nSaving all stacks... ({directory+name+'.tiff'})")
+            print(f"\nSaving all stacks... ({directory+name+'.tiff'})", end=' ')
 
             # Convert all images to RGB to ensure homogeneity across frames in all stacks
             rgb_stacks = np.array([to_RGB(stack) for stack in self.stacks])
 
             # Write the image
             tiff.imwrite(directory + name + '.tiff', rgb_stacks, imagej=True, metadata={'axes': 'TCYXS'})
+        print('(Done)')
 
     # ------------------- Setter-ish Methods -------------------
 

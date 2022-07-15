@@ -52,9 +52,13 @@ class Spline:
         # Store the map between values of the spline (coordinates or derivatives) across frames
         self.map = []
 
+        print(f'\nCreating splines from {len(self.tracked)} contours...', end=' ')
         self.to_splines(degree, smoothing, stdev, append=True)
+        print(f'(Done)\nEvaluating splines at {int(1 / increment)} points -> ', end=' ')
         self.evaluate_splines(increment=increment, append=True)
+        print(f'Calculating curvature of splines...', end=' ')
         self.splines_curvature(increment=increment)
+        print('(Done)')
 
     # -------------------------------- Numerical Methods --------------------------------
 
@@ -127,7 +131,7 @@ class Spline:
 
         # Generate map if necessary, then apply it
         if der == 0:
-            self.generate_map(coords_list)
+            self.generate_LSSD_map(coords_list)
         coords_list = self.apply_map(coords_list)
 
         if append:
@@ -166,8 +170,6 @@ class Spline:
 
     def animate_spline(self, which, file_name, figsize=None, sigma=1, cmap='jet', start=1000, frame_time=True):
         """TODO: add docstring"""
-
-        # TODO: fix scaling to micrometers, perhaps make the choice of nm or um automatically
 
         # Treat file name
         if file_name:
@@ -240,9 +242,10 @@ class Spline:
         ani = animation.FuncAnimation(fig, animate, len(splines), interval=10, blit=True)
 
         # Write animation to video (uses FFMpeg)
-        print(f'\nWriting animation... (Output Images/Animations/{file_name}.mp4)')
+        print(f'\nWriting animation... (Output Images/Animations/{file_name}.mp4)', end=' ')
         writervideo = animation.FFMpegWriter(fps=5)
         ani.save(f'Output Images/Animations/{file_name}.mp4', writer=writervideo, dpi=300)
+        print('(Done)')
 
         return ani
 
@@ -309,7 +312,6 @@ class Spline:
                      color=mapper.to_rgba(displacements[i]))
 
         # Plot the two splines
-        # TODO: change from frame to time interval from stack.timings
         label_1 = f'Frame {np.min(positions)}' if frame_time else f'Time {np.min(positions) * self.timings} s'
         plt.scatter(coord_1[0] * px_xlen_um, coord_1[1] * px_ylen_um, c='#000000',
                     label=label_1, s=10)
@@ -324,10 +326,11 @@ class Spline:
 
     # -------------------------------- Mapping Methods --------------------------------
 
-    def generate_map(self, coords_list):
-        """TODO: add docstring"""
+    def generate_LSSD_map(self, coords_list):
+        """Generated a least sum square distance map between points of successive splines. TODO: add docstring"""
 
         # Iterate through the coordinates, finding the minimum squared distance
+        print('Generating spline map [LSSD method]...', end=' ')
         min_diffs_list = []
         for i, coords in enumerate(coords_list):
             min_diffs = []
@@ -349,6 +352,7 @@ class Spline:
                     sum_squared_distances.append(np.sum(diff_x ** 2 + diff_y ** 2))
                 min_diffs.append(np.argmin(sum_squared_distances))
             min_diffs_list.append(min_diffs)
+        print('(Done)')
 
         self.map = min_diffs_list
 
