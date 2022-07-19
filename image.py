@@ -478,6 +478,62 @@ class Stack:
 
         return gauss
 
+    def dilate(self, kernel, inv=True, iterations=1, append=True):
+        """TODO: add docstring"""
+
+        # Get the stack to process
+        to_process = self.stack_select(append)
+
+        # Kernel has to be 8 bit integer array
+        assert kernel.dtype.type == np.uint8, 'Dilation kernel has to be of type uint8'
+
+        # Invert image
+        if inv:
+            to_process = 255 - to_process
+
+        # Dilate
+        dilated = np.copy(to_process)
+        for i, frame in enumerate(to_process):
+            dilated[i] = cv.dilate(frame, kernel, iterations=iterations)
+
+        # Revert the image
+        if inv:
+            dilated = 255 - dilated
+
+        # Add thresholded stack to the pipeline
+        if append:
+            self.info.append(f'Dilate image {iterations} time(s)')
+            self.stacks.append(dilated)
+
+    def erode(self, kernel, inv=True, iterations=1, append=True):
+        """TODO: add docstring"""
+
+        # Get the stack to process
+        to_process = self.stack_select(append)
+
+        # Kernel has to be 8 bit integer array
+        assert kernel.dtype.type == np.uint8, 'Dilation kernel has to be of type uint8'
+
+        # Invert image
+        if inv:
+            to_process = 255 - to_process
+
+        # Erode
+        eroded = np.copy(to_process)
+        for i, frame in enumerate(to_process):
+            eroded[i] = cv.erode(frame, kernel, iterations=iterations)
+
+        # Revert the image
+        if inv:
+            eroded = 255 - eroded
+
+        # Add thresholded stack to the pipeline
+        if append:
+            self.info.append(f'Erode image {iterations} time(s)')
+            self.stacks.append(eroded)
+
+        pass
+
     def canny(self, low, high, coeffs=[0.299, 0.587, 0.114], otsu=True, append=True):
         """TODO: add docstring"""
 
@@ -589,6 +645,8 @@ class Stack:
     def track_contour(self, contour_loc, which=-1, store=True, append=True):
         """TODO: add docstring"""
 
+        print(f'Tracking contour {contour_loc}', end=' ')
+
         # Get index path
         pointers = track.track_contour(self, contour_loc, which=which)
 
@@ -615,6 +673,8 @@ class Stack:
 
             self.stacks.append(images)
             self.info.append(f'Tracked contours {which} from {contour_loc[0]}')
+
+        print('(Done)')
 
         return similar_contours, similar_centers
 
