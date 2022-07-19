@@ -1,12 +1,14 @@
 import numpy as np
 import scipy.interpolate as interp
-import skimage.segmentation as seg
 
 import matplotlib.animation as animation
 import matplotlib.cm as cm
 import matplotlib.colors as colors
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+from shapely.geometry import Point
+from shapely.geometry.polygon import Polygon
 
 # Set font parameters for plots
 plt.rcParams["font.family"] = "Serif"
@@ -24,6 +26,24 @@ def adjust_contours(contours):
         new_contours.append(fixed)
 
     return new_contours
+
+
+def is_in_spline(coord, coord_spline):
+    """TODO: add docstring"""
+
+    # Convert to list of tuples
+    coord_spline_tuples = [(c[0], c[1]) for c in coord_spline.T]
+
+    # Approximate spline as polygon
+    polygon = Polygon(coord_spline_tuples)
+
+    # Create list of points to check
+    coord_points = [Point(c[0], c[1]) for c in coord.T]
+
+    # Check if each points is in the spline
+    mask = np.array([polygon.contains(point) for point in coord_points])
+
+    return mask
 
 
 class Spline:
@@ -44,6 +64,7 @@ class Spline:
         self.splines_list = []
         self.coords_list = []
         self.curvatures_list = []
+        self.displacements_list = []
 
         self.px_xlen = stack.px_xlen
         self.px_ylen = stack.px_ylen
@@ -58,6 +79,8 @@ class Spline:
         self.evaluate_splines(increment=increment, append=True)
         print(f'Calculating curvature of splines...', end=' ')
         self.splines_curvature(increment=increment)
+        print('(Done)\nEvaluating displacements...', end=' ')
+        self.splines_displacements()
         print('(Done)')
 
     # -------------------------------- Numerical Methods --------------------------------
@@ -164,6 +187,19 @@ class Spline:
             self.curvatures_list = curvatures_list
 
         return curvatures_list
+
+    def splines_displacements(self):
+        """TODO: add docstring"""
+
+        for coords in self.coords_list:
+            displacements = []
+            for i, curr_coord in enumerate(coords[:-1]):
+                next_coord = coords[i + 1]
+                abs_d = np.sqrt(np.sum((next_coord - curr_coord) ** 2, axis=0))
+                d = np.where(is_in_spline(next_coord, curr_coord), -abs_d, abs_d)
+
+                displacements.append(d)
+            self.displacements_list.append(np.array(displacements))
 
     # -------------------------------- Graphical Methods --------------------------------
 
@@ -278,19 +314,8 @@ class Spline:
         px_ylen_um = self.px_ylen / 1000  # micrometers
 
         # Get the displacements
-        displacements = []
-        for i, pair_1 in enumerate(coord_1.T):
-            pair_2 = coord_2.T[i]
-            displacements.append(np.sqrt(np.sum((pair_2 - pair_1) ** 2)))
-
-            # TODO: implement method to verify the sign of propagation (+ if expanding, - if retracting)
-            # # Check which is closer to the center
-            # d_2 = np.sum((pair_2 - self.centers[which][positions[0]]) ** 2)
-            # d_1 = np.sum((pair_1 - self.centers[which][positions[0]]) ** 2)
-            # print(d_1, d_2)
-            # if d_2 < d_1:
-            #     displacements[-1] = -displacements[-1]
-        displacements = displacements[::interval]
+        abs_displacements = np.sqrt(np.sum((coord_2 - coord_1) ** 2, axis=0))
+        displacements = np.where(is_in_spline(coord_2, coord_1), -abs_displacements, abs_displacements)[::interval]
 
         # Initialize figure
         fig = plt.figure() if figsize is None else plt.figure(figsize=figsize)
@@ -346,15 +371,19 @@ class Spline:
         fig = plt.figure() if figsize is None else plt.figure(figsize=figsize)
         im = plt.imshow(np.roll(curvatures.T, -start, axis=0), aspect='auto', origin='lower', cmap='jet', norm=norm)
         plt.colorbar(im)
-        print(f'Writing kymograph... (Output Images/Kymographs/{file_name}_{which}.png)', end=' ')
+        print(f'\nWriting kymograph... (Output Images/Kymographs/{file_name}_{which}.png)', end=' ')
         plt.savefig(f'Output Images/Kymographs/{file_name}_{which}.png')
         print('(Done)')
 
-        pass
-
-    def create_curvature_displacement_plot(self):
+    def create_curvature_displacement_plot(self, which, point):
         """TODO: add docstring"""
-        pass
+
+        plt.figure()
+        velocities = np.array(self.displacements_list[which] / self.timings)
+        curvatures = np.array(self.curvatures_list[which])[:-1]
+        for i in range(0, 2000, 100):
+            plt.scatter(curvatures[:, i], velocities[:, i], marker='.')
+        plt.show()
 
     # -------------------------------- Mapping Methods --------------------------------
 
@@ -401,6 +430,13 @@ class Spline:
             new_coords_list.append(new_coords)
 
         return new_coords_list
+
+    def load_map(self):
+        """TODO: add docstring"""
+
+        # TODO: save map in a cache file from which to load
+
+        pass
 
     def perpendicular_gradient_map(self):
         """TODO: add docstring"""

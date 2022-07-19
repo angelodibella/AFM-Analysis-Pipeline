@@ -64,23 +64,26 @@ def transmembrane_defects(stack):
     # Create spline object
     spline = ps.Spline(stack)
 
+    # Create curvature-velocity diagram
+    spline.create_curvature_displacement_plot(0, 0)
+
     # # Animate the spline with curvature
     # spline.animate_spline(0, 'trans', sigma=1.2)
     # spline.animate_spline(1, 'trans', sigma=1.3)
     # spline.animate_spline(2, 'trans', sigma=1.3)
 
     # Compare splines
-    # spline.compare_splines(0, (10, 11), 'trans')
-    # spline.compare_splines(0, (11, 12), 'trans')
-    # spline.compare_splines(0, (12, 13), 'trans')
-    # spline.compare_splines(0, (13, 14), 'trans')
-    # spline.compare_splines(0, (14, 15), 'trans')
-    # spline.compare_splines(0, (15, 16), 'trans')
-    # spline.compare_splines(0, (17, 18), 'trans')
-    #
-    # spline.compare_splines(1, (10, 11), 'trans')
-    # spline.compare_splines(1, (11, 12), 'trans')
-    # spline.compare_splines(1, (12, 13), 'trans')
+    spline.compare_splines(0, (10, 11), 'trans')
+    spline.compare_splines(0, (11, 12), 'trans')
+    spline.compare_splines(0, (12, 13), 'trans')
+    spline.compare_splines(0, (13, 14), 'trans')
+    spline.compare_splines(0, (14, 15), 'trans')
+    spline.compare_splines(0, (15, 16), 'trans')
+    spline.compare_splines(0, (17, 18), 'trans')
+
+    spline.compare_splines(1, (10, 11), 'trans')
+    spline.compare_splines(1, (11, 12), 'trans')
+    spline.compare_splines(1, (12, 13), 'trans')
 
     # Create kymographs
     spline.create_kymograph(0, 'trans')
