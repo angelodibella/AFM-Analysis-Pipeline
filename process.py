@@ -142,8 +142,6 @@ class Spline:
     def splines_curvature(self, increment=0.0005, append=True):
         """TODO: add docstring, check that splines must be at least parabolic (degree > 1); this is signed curvature"""
 
-        # TODO: FIX! Curvatures are set to zero for some reason...
-
         # Calculate derivatives of spline, which have the same length
         coords_list_d1 = self.evaluate_splines(increment=increment, der=1)
         coords_list_d2 = self.evaluate_splines(increment=increment, der=2)
@@ -158,6 +156,7 @@ class Spline:
                 # Calculate curvature for current list of coordinates at each point
                 curvature_numerator = coord_d1[1] * coord_d2[0] - coord_d1[0] * coord_d2[1]
                 curvature_denominator = (coord_d1[0] ** 2 + coord_d1[1] ** 2) ** (3 / 2)
+                # TODO: handle curvature_denominator = 0 or really small
                 curvatures.append(curvature_numerator / curvature_denominator)
             curvatures_list.append(curvatures)
 
@@ -171,7 +170,7 @@ class Spline:
     def animate_spline(self, which, file_name, figsize=None, sigma=1, cmap='jet', start=1000, frame_time=True):
         """TODO: add docstring"""
 
-        # Treat file name
+        # Treat file name TODO: simplify this since `file_name` is not optional
         if file_name:
             file_name += f'_{self.tracked_positions[which][0]}_{self.tracked_positions[which][1]}'
         else:
@@ -315,20 +314,52 @@ class Spline:
         # Plot the two splines
         label_1 = f'Frame {np.min(positions)}' if frame_time else f'Time {np.min(positions) * self.timings} s'
         plt.scatter(coord_1[0] * px_xlen_um, coord_1[1] * px_ylen_um, c='#000000',
-                    label=label_1, s=10)
+                    label=label_1, s=6)
         label_2 = f'Frame {np.max(positions)}' if frame_time else f'Time {np.max(positions) * self.timings} s'
         plt.scatter(coord_2[0] * px_xlen_um, coord_2[1] * px_ylen_um, c='#808080',
-                    label=label_2, s=10)
+                    label=label_2, s=6)
         plt.legend()
 
         print(f'\nSaving comparison... (Output Images/Comparisons/'
               f'{file_name}_{which}_({positions[0]}_{positions[1]}).png)')
         plt.savefig(f'Output Images/Comparisons/{file_name}_{which}_({positions[0]}_{positions[1]}).png', dpi=300)
 
+    def create_kymograph(self, which, file_name, figsize=None, sigma=1, cmap='jet', start=100, frame_time=True,
+                         sampling_interval=1):
+        """TODO: add docstring"""
+
+        # Convert pixel scale to micrometers
+        px_xlen_um = self.px_xlen / 1000  # micrometers
+        px_ylen_um = self.px_ylen / 1000  # micrometers
+
+        # Get the desired curvatures
+        curvatures = np.array(self.curvatures_list[which]).T[::sampling_interval].T
+
+        # Since there may be outliers of high leverage, consider only the curvature values that are in the
+        # range +/- (sigma * standard deviation), where the (sample) standard deviation is that of the curvature values,
+        # and sigma is a multiplier chosen by the user for the specific contour
+        curvature_range = sigma * np.std(curvatures, ddof=1)
+
+        # Create color map for curvature
+        norm = colors.Normalize(vmin=-curvature_range, vmax=curvature_range, clip=True)
+
+        fig = plt.figure() if figsize is None else plt.figure(figsize=figsize)
+        im = plt.imshow(np.roll(curvatures.T, -start, axis=0), aspect='auto', origin='lower', cmap='jet', norm=norm)
+        plt.colorbar(im)
+        print(f'Writing kymograph... (Output Images/Kymographs/{file_name}_{which}.png)', end=' ')
+        plt.savefig(f'Output Images/Kymographs/{file_name}_{which}.png')
+        print('(Done)')
+
+        pass
+
+    def create_curvature_displacement_plot(self):
+        """TODO: add docstring"""
+        pass
+
     # -------------------------------- Mapping Methods --------------------------------
 
     def generate_LSSD_map(self, coords_list):
-        """Generated a least sum square distance map between points of successive splines. TODO: add docstring"""
+        """Generated a least sum square distance map between points of successive splines. TODO: finish docstring"""
 
         # Iterate through the coordinates, finding the minimum squared distance
         print('Generating spline map [LSSD method]...', end=' ')
