@@ -1,4 +1,5 @@
 import numpy as np
+from numpy import ndarray
 import scipy.interpolate as interp
 
 import matplotlib.animation as animation
@@ -16,7 +17,19 @@ plt.rcParams.update({'font.size': 10})
 
 
 def adjust_contours(contours):
-    """TODO: add docstring"""
+    """Convert the standard contour output of OpenCV to lists: list(tuple(ndarray[N, 1, 2]))
+    -> list(list(ndaray[N, 2])).
+
+    Parameters
+    ----------
+    contours : list of (tuple of ndarray)
+        List of raw contour outputs of OpenCV.
+
+    Returns
+    -------
+    new_contours : list of (list of ndarray)
+        Adjusted list of contours.
+    """
 
     new_contours = []
     for stack in contours:
@@ -29,7 +42,20 @@ def adjust_contours(contours):
 
 
 def is_in_spline(coord, coord_spline):
-    """TODO: add docstring"""
+    """Check if an array of coordinates is inside a spline given its coordinates.
+
+    Parameters
+    ----------
+    coord : ndarray of float
+        Two-dimensional array containing the coordinates to be verified.
+    coord_spline : ndarray of float
+        Coordinates that comprise the spline
+
+    Returns
+    -------
+    mask : ndarray of bool
+        One-dimensional array indicating whether each point is inside the spline.
+    """
 
     # Convert to list of tuples
     coord_spline_tuples = [(c[0], c[1]) for c in coord_spline.T]
@@ -179,7 +205,7 @@ class Spline:
                 # Calculate curvature for current list of coordinates at each point
                 curvature_numerator = coord_d1[1] * coord_d2[0] - coord_d1[0] * coord_d2[1]
                 curvature_denominator = (coord_d1[0] ** 2 + coord_d1[1] ** 2) ** (3 / 2)
-                # TODO: handle curvature_denominator = 0 or really small
+
                 curvatures.append(curvature_numerator / curvature_denominator)
             curvatures_list.append(curvatures)
 
@@ -349,8 +375,8 @@ class Spline:
               f'{file_name}_{which}_({positions[0]}_{positions[1]}).png)')
         plt.savefig(f'Output Images/Comparisons/{file_name}_{which}_({positions[0]}_{positions[1]}).png', dpi=300)
 
-    def create_kymograph(self, which, file_name, figsize=None, sigma=1, cmap='jet', start=100, frame_time=True,
-                         sampling_interval=1):
+    def create_curvature_kymograph(self, which, file_name, figsize=None, sigma=1, cmap='jet', start=100,
+                                   frame_time=True, sampling_interval=1, hline=None):
         """TODO: add docstring"""
 
         # Convert pixel scale to micrometers
@@ -369,21 +395,85 @@ class Spline:
         norm = colors.Normalize(vmin=-curvature_range, vmax=curvature_range, clip=True)
 
         fig = plt.figure() if figsize is None else plt.figure(figsize=figsize)
-        im = plt.imshow(np.roll(curvatures.T, -start, axis=0), aspect='auto', origin='lower', cmap='jet', norm=norm)
+        im = plt.imshow(np.roll(curvatures.T, -start, axis=0), aspect='auto', origin='lower', cmap='jet', norm=norm,
+                        extent=(0, curvatures.shape[0] * self.timings, 0, curvatures.shape[1] * self.px_xlen))
+        plt.xlabel('Time (s)')
+        plt.ylabel('Arc Length Position on Spline (nm)')
         plt.colorbar(im)
-        print(f'\nWriting kymograph... (Output Images/Kymographs/{file_name}_{which}.png)', end=' ')
-        plt.savefig(f'Output Images/Kymographs/{file_name}_{which}.png')
+
+        # Add horizontal line
+        if hline is not None:
+            y_line = ((hline - start) * self.px_xlen) % (curvatures.shape[1] * self.px_xlen)
+            plt.hlines(y_line, 0, curvatures.shape[0] * self.timings, linestyles='dashed')
+
+        print(f'\nWriting kymograph... (Output Images/Kymographs/{file_name}_{which}_curv.png)', end=' ')
+        plt.savefig(f'Output Images/Kymographs/{file_name}_{which}_curv.png')
         print('(Done)')
 
-    def create_curvature_displacement_plot(self, which, point):
+    def create_velocity_kymograph(self, which, file_name, sampling_interval=1, start=100, hline=None, sigma=1.5):
+        """TODO: add docstring"""
+
+        # Get the desired velocities
+        velocities = (np.array(self.displacements_list[which]) / self.timings).T[::sampling_interval].T
+
+        # Since there may be outliers of high leverage, consider only the velocity values that are in the
+        # range +/- (sigma * standard deviation), where the (sample) standard deviation is that of the velocity values,
+        # and sigma is a multiplier chosen by the user for the specific contour
+        velocity_range = sigma * np.std(velocities, ddof=1)
+
+        # Create color map for velocity
+        norm = colors.Normalize(vmin=-velocity_range, vmax=velocity_range, clip=True)
+
+        fig = plt.figure()
+        im = plt.imshow(np.roll(velocities.T, -start, axis=0), aspect='auto', origin='lower', cmap='jet', norm=norm,
+                        extent=(0, velocities.shape[0] * self.timings, 0, velocities.shape[1] * self.px_xlen))
+
+        plt.xlabel('Time (s)')
+        plt.ylabel('Arc Length Position on Spline (nm)')
+        plt.colorbar(im)
+
+        # Add horizontal line
+        if hline is not None:
+            y_line = ((hline - start) * self.px_xlen) % (velocities.shape[1] * self.px_xlen)
+            plt.hlines(y_line, 0, velocities.shape[0] * self.timings, linestyles='dashed')
+
+        print(f'\nWriting kymograph... (Output Images/Kymographs/{file_name}_{which}_vel.png)', end=' ')
+        plt.savefig(f'Output Images/Kymographs/{file_name}_{which}_vel.png')
+        print('(Done)')
+
+    def create_curvature_displacement_plot(self, which, point, file_name):
         """TODO: add docstring"""
 
         plt.figure()
-        velocities = np.array(self.displacements_list[which] / self.timings)
+
+        # Calculate velocities and curvatures
+        velocities = self.displacements_list[which] / self.timings * self.px_xlen  # nm / s
         curvatures = np.array(self.curvatures_list[which])[:-1]
-        for i in range(0, 2000, 100):
-            plt.scatter(curvatures[:, i], velocities[:, i], marker='.')
-        plt.show()
+        plt.xlim(np.min(curvatures[:, point]), np.max(curvatures[:, point]))
+
+        plt.title(f'Point {point} of Contour {which} across Time')
+        plt.xlabel('Curvature')
+        plt.ylabel(r'Velocity ($\mathrm{nm}\;\mathrm{s}^{-1}$)')
+        plt.scatter(curvatures[:, point], velocities[:, point], marker='.', color='#000000', label='Spline data')
+
+        # Weighted linear fit
+        degree = 1
+        fit, cvm = np.polyfit(curvatures[:, point], velocities[:, point], degree, cov=True)
+        dfit = [np.sqrt(cvm[i, i]) for i in range(2)]
+        fitted = fit[0] * curvatures[:, point] + fit[1]
+        fitted_max = (fit[0] + dfit[0]) * curvatures[:, point] + (fit[1] + dfit[1])
+        fitted_min = (fit[0] - dfit[0]) * curvatures[:, point] + (fit[1] - dfit[1])
+
+        # Plot linear fit
+        plt.plot(curvatures[:, point], fitted, color='orange', label='Linear fit')
+        plt.fill_between(curvatures[:, point], fitted_min, fitted_max, alpha=0.2, color='orange',
+                         label='Confidence interval at 1-sigma')
+        plt.legend()
+
+        print(f'\nSaving curvature/velocity plot of contour {which} at point {point}/{int(1 / self.increment)}...'
+              f' (Output Images/Curvature with Velocity/{file_name}_{which}_{point}.png)...', end=' ')
+        plt.savefig(f'Output Images/Curvature with Velocity/{file_name}_{which}_{point}.png', dpi=300)
+        print('(Done)')
 
     # -------------------------------- Mapping Methods --------------------------------
 
@@ -446,6 +536,3 @@ class Spline:
         #       to the gradient of the spline at the current point
 
         pass
-
-
-
