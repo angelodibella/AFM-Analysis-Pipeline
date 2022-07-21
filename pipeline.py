@@ -65,7 +65,9 @@ def transmembrane_defects(stack):
     spline = ps.Spline(stack)
 
     # Create curvature-velocity diagram
-    spline.create_curvature_displacement_plot(0, 0, 'trans')
+    spline.create_curvature_velocity_plot(0, 0, 'trans', d_velocity_approx=0)
+    spline.create_curvature_velocity_plot(0, 0, 'trans_dvel', d_velocity_approx=1)
+    spline.create_curvature_velocity_plot(0, 1910, 'trans')
 
     # # Animate the spline with curvature
     # spline.animate_spline(0, 'trans', sigma=1.2, start=0)
@@ -86,11 +88,11 @@ def transmembrane_defects(stack):
     # spline.compare_splines(1, (12, 13), 'trans')
 
     # Create kymographs
-    spline.create_curvature_kymograph(0, 'trans', hline=0)
+    spline.create_curvature_kymograph(0, 'trans', hline=1910)
     spline.create_curvature_kymograph(1, 'trans')
     spline.create_curvature_kymograph(2, 'trans')
 
-    spline.create_velocity_kymograph(0, 'trans', hline=0)
+    spline.create_velocity_kymograph(0, 'trans', hline=1910)
     spline.create_velocity_kymograph(1, 'trans')
     spline.create_velocity_kymograph(2, 'trans')
 

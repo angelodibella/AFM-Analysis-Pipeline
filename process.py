@@ -441,14 +441,18 @@ class Spline:
         plt.savefig(f'Output Images/Kymographs/{file_name}_{which}_vel.png')
         print('(Done)')
 
-    def create_curvature_displacement_plot(self, which, point, file_name):
+    def create_curvature_velocity_plot(self, which, point, file_name, d_velocity_approx=0):
         """TODO: add docstring"""
 
         plt.figure()
 
         # Calculate velocities and curvatures
         velocities = self.displacements_list[which] / self.timings * self.px_xlen  # nm / s
-        curvatures = np.array(self.curvatures_list[which])[:-1]
+        if d_velocity_approx:
+            vel_inst = velocities[:-d_velocity_approx]
+            vel_next = np.roll(velocities, d_velocity_approx)[d_velocity_approx:]
+            velocities = (vel_inst + vel_next) / (d_velocity_approx + 1)
+        curvatures = np.array(self.curvatures_list[which])[:-(1 + d_velocity_approx)]
         plt.xlim(np.min(curvatures[:, point]), np.max(curvatures[:, point]))
 
         plt.title(f'Point {point} of Contour {which} across Time')
@@ -456,17 +460,27 @@ class Spline:
         plt.ylabel(r'Velocity ($\mathrm{nm}\;\mathrm{s}^{-1}$)')
         plt.scatter(curvatures[:, point], velocities[:, point], marker='.', color='#000000', label='Spline data')
 
-        # Weighted linear fit
+        # Linear fit
         degree = 1
         fit, cvm = np.polyfit(curvatures[:, point], velocities[:, point], degree, cov=True)
         dfit = [np.sqrt(cvm[i, i]) for i in range(2)]
         fitted = fit[0] * curvatures[:, point] + fit[1]
-        fitted_max = (fit[0] + dfit[0]) * curvatures[:, point] + (fit[1] + dfit[1])
-        fitted_min = (fit[0] - dfit[0]) * curvatures[:, point] + (fit[1] - dfit[1])
+
+        endpoint_curvatures = np.r_[np.min(curvatures[:, point]), curvatures[:, point], np.max(curvatures[:, point])]
+        fitted_max = (fit[0] + dfit[0]) * endpoint_curvatures + (fit[1] + dfit[1])
+        fitted_min = (fit[0] - dfit[0]) * endpoint_curvatures + (fit[1] - dfit[1])
+
+        # Calculate coefficient of determination
+        p = np.poly1d(fit)
+        y_hat = p(curvatures[:, point])
+        y_bar = np.mean(velocities[:, point])
+        ss_reg = np.sum((y_hat - y_bar) ** 2)
+        ss_tot = np.sum((velocities[:, point] - y_bar) ** 2)
+        r_sq = ss_reg / ss_tot
 
         # Plot linear fit
-        plt.plot(curvatures[:, point], fitted, color='orange', label='Linear fit')
-        plt.fill_between(curvatures[:, point], fitted_min, fitted_max, alpha=0.2, color='orange',
+        plt.plot(curvatures[:, point], fitted, color='orange', label=f'Linear fit: $R^2 = {r_sq:0.5f}$')
+        plt.fill_between(endpoint_curvatures, fitted_min, fitted_max, alpha=0.2, color='orange',
                          label='Confidence interval at 1-sigma')
         plt.legend()
 
