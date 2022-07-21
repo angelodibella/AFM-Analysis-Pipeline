@@ -72,15 +72,39 @@ def is_in_spline(coord, coord_spline):
     return mask
 
 
+def rotate_coord(coord, theta):
+    """Rotates the axes of a two-dimensional array of coordinates of shape (2, N) from its original orthonormal basis.
+
+    Parameters
+    ----------
+    coord : ndarray of float
+        Array of coordinates with shape (2, N) where N is the total number of coordinate points.
+    theta : float
+        Angle the coordinate system must be rotated by
+
+    Returns
+    -------
+    new_coord: ndarray of float
+        Coordinates represented in the new, rotated coordinate system.
+    """
+
+    rotating_matrix = np.array([[np.cos(theta), np.sin(theta)],
+                                [-np.sin(theta), np.cos(theta)]])
+    new_coord = rotating_matrix @ coord
+
+    return new_coord
+
+
 class Spline:
     """TODO: add class docstring"""
 
-    def __init__(self, stack, degree=3, smoothing=7, stdev=1, increment=0.0005):
+    def __init__(self, stack, degree=3, smoothing=7, stdev=1, increment=0.0005, secondary_map=None):
 
         self.degree = degree
         self.smoothing = smoothing
         self.stdev = stdev
         self.increment = increment
+        self.use_secondary_map = secondary_map
 
         # Retrieve the tracked contours
         self.tracked = stack.tracked
@@ -92,12 +116,15 @@ class Spline:
         self.curvatures_list = []
         self.displacements_list = []
 
+        self.secondary_coords_list = []
+
         self.px_xlen = stack.px_xlen
         self.px_ylen = stack.px_ylen
         self.timings = stack.timings
 
         # Store the map between values of the spline (coordinates or derivatives) across frames
         self.map = []
+        self.secondary_maps_list = []
 
         print(f'\nCreating splines from {len(self.tracked)} contours...', end=' ')
         self.to_splines(degree, smoothing, stdev, append=True)
@@ -108,6 +135,11 @@ class Spline:
         print('(Done)\nEvaluating displacements...', end=' ')
         self.splines_displacements()
         print('(Done)')
+
+        if self.use_secondary_map == 'normal':
+            print('Generating secondary map [normal vector method]...', end=' ')
+            self.generate_NV_secondary_map()
+            print('(Done)')
 
     # -------------------------------- Numerical Methods --------------------------------
 
@@ -310,7 +342,8 @@ class Spline:
 
         return ani
 
-    def compare_splines(self, which, positions, file_name, figsize=None, interval=50, cmap='jet', frame_time=True):
+    def compare_splines(self, which, positions, file_name, figsize=None, interval=50, cmap='jet', frame_time=True,
+                        secondary_map=False):
         """Compare two splines with the current map.
 
         Parameters
@@ -441,7 +474,7 @@ class Spline:
         plt.savefig(f'Output Images/Kymographs/{file_name}_{which}_vel.png')
         print('(Done)')
 
-    def create_curvature_velocity_plot(self, which, point, file_name, d_velocity_approx=0):
+    def create_curvature_velocity_plot(self, which, point, file_name, d_velocity_approx=0, secondary_map=False):
         """TODO: add docstring"""
 
         plt.figure()
@@ -542,11 +575,42 @@ class Spline:
 
         pass
 
-    def perpendicular_gradient_map(self):
+    def generate_NV_secondary_map(self):
         """TODO: add docstring"""
 
-        # TODO: implement `perpendicular_gradient_map`; this should calculate, for every point in every spline, the
-        #       next (in the successive frame) best point, preferring the points that are closest to the perpendicular
-        #       to the gradient of the spline at the current point
+        # Calculate derivatives of spline, which have the same length
+        coords_list_d1 = self.evaluate_splines(increment=self.increment, der=1)
+
+        # Iterate through the splines, changing their coordinate system for every point
+        for which, coords in enumerate(self.coords_list):
+            secondary_maps = []
+            for frame, coord in enumerate(coords[:-1]):
+                secondary_map = []
+
+                # Calculate next coordinates
+                next_coord = coords[frame + 1]
+
+                # Find the closes points to the normal vector
+                tangent_vectors = coords_list_d1[which][frame]  # normalization is trivial since arc tangent is computed
+                thetas = np.arctan2(*tangent_vectors)
+                for i, theta in enumerate(thetas):
+                    rotated_next_coord_x = rotate_coord(next_coord, theta)[0]
+                    curr_coord_pair_x = coord.T[i, 0]
+
+                    # Minimize rotated x-distances
+                    # WARNING: might be bug due to multiple intersections of normal line with current spline,
+                    # TODO: select ROI in the neighborhood of the current point to avoid pathological behavior due to
+                    #       multiple intersections
+                    next_index = np.argmin(np.abs(rotated_next_coord_x - curr_coord_pair_x))
+                    secondary_map.append(next_index)
+                secondary_maps.append(secondary_map)
+            self.secondary_maps_list.append(np.array(secondary_maps))
+
+    def apply_secondary_map(self, which, point):
 
         pass
+
+    def load_secondary_map(self):
+        """TODO: add docstring"""
+        pass
+
