@@ -11,6 +11,8 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon
 
+from sklearn.cluster import KMeans
+
 # Set font parameters for plots
 plt.rcParams["font.family"] = "Serif"
 plt.rcParams.update({'font.size': 10})
@@ -88,8 +90,7 @@ def rotate_coord(coord, theta):
         Coordinates represented in the new, rotated coordinate system.
     """
 
-    rotating_matrix = np.array([[np.cos(theta), np.sin(theta)],
-                                [-np.sin(theta), np.cos(theta)]])
+    rotating_matrix = np.array([[np.cos(theta), np.sin(theta)], [-np.sin(theta), np.cos(theta)]])
     new_coord = rotating_matrix @ coord
 
     return new_coord
@@ -106,6 +107,8 @@ class Spline:
         self.increment = increment
         self.use_secondary_map = secondary_map
 
+        self.frames = stack.frames
+
         # Retrieve the tracked contours
         self.tracked = stack.tracked
         self.tracked_positions = stack.tracked_positions
@@ -117,6 +120,7 @@ class Spline:
         self.displacements_list = []
 
         self.secondary_coords_list = []
+        self.secondary_displacements_list = []  # TODO: implement!
 
         self.px_xlen = stack.px_xlen
         self.px_ylen = stack.px_ylen
@@ -362,15 +366,23 @@ class Spline:
             Color map for displacement vectors
         frame_time : bool, default True
             Whether the time is displayed as frames in the stack or the true time in seconds.
+        secondary_map : bool, default False
+            Use the secondary map as point mapping between spline coordinates.
         """
-
-        # Select the splines
-        coord_1 = self.coords_list[which][np.min(positions)]
-        coord_2 = self.coords_list[which][np.max(positions)]
 
         # Get pixel scale in micrometers
         px_xlen_um = self.px_xlen / 1000  # micrometers
         px_ylen_um = self.px_ylen / 1000  # micrometers
+
+        if secondary_map:
+            coords_list = self.apply_secondary_map(self.coords_list)
+            file_name += f'_{self.use_secondary_map}'
+        else:
+            coords_list = self.coords_list
+
+        # Select the splines
+        coord_1 = coords_list[which][np.min(positions)]
+        coord_2 = coords_list[which][np.max(positions)]
 
         # Get the displacements
         abs_displacements = np.sqrt(np.sum((coord_2 - coord_1) ** 2, axis=0))
@@ -381,6 +393,7 @@ class Spline:
         plt.xlabel(r'x ($\mu$m)')
         plt.ylabel(r'y ($\mu$m)')
         plt.gca().invert_yaxis()
+        plt.gca().axis('equal')
 
         # Create color map (WARNING: does not support px_xlen != px_ylen)
         # TODO: display color bar in nm instead of um, and add title to it
@@ -584,7 +597,7 @@ class Spline:
         # Iterate through the splines, changing their coordinate system for every point
         for which, coords in enumerate(self.coords_list):
             secondary_maps = []
-            for frame, coord in enumerate(coords[:-1]):
+            for frame, curr_coord in enumerate(coords[:-1]):
                 secondary_map = []
 
                 # Calculate next coordinates
@@ -592,25 +605,89 @@ class Spline:
 
                 # Find the closes points to the normal vector
                 tangent_vectors = coords_list_d1[which][frame]  # normalization is trivial since arc tangent is computed
-                thetas = np.arctan2(*tangent_vectors)
-                for i, theta in enumerate(thetas):
-                    rotated_next_coord_x = rotate_coord(next_coord, theta)[0]
-                    curr_coord_pair_x = coord.T[i, 0]
+                for i, tangent_vector in enumerate(tangent_vectors.T):  # remove [::200]
+                    # Calculate rotation angle
+                    theta = np.arctan2(tangent_vector[1], tangent_vector[0])
 
-                    # Minimize rotated x-distances
-                    # WARNING: might be bug due to multiple intersections of normal line with current spline,
-                    # TODO: select ROI in the neighborhood of the current point to avoid pathological behavior due to
-                    #       multiple intersections
-                    next_index = np.argmin(np.abs(rotated_next_coord_x - curr_coord_pair_x))
-                    secondary_map.append(next_index)
+                    # Rotate coordinates
+                    rotated_next_coord = rotate_coord(next_coord, theta)  # list of rotated next coordinates
+                    rotated_curr_coord_pair = rotate_coord(curr_coord[:, i], theta)  # rotated current coordinate
+
+                    # rotated_curr_coord = rotate_coord(curr_coord, theta)  # remove
+
+                    # test_rotation(rotated_next_coord, rotated_curr_coord_pair, tangent_vector, theta)  # remove
+
+                    # Calculate square x-differences of candidate points from current point
+                    dx_sq = (rotated_next_coord[0] - rotated_curr_coord_pair[0]) ** 2
+                    dy_sq = (rotated_next_coord[1] - rotated_curr_coord_pair[1]) ** 2
+
+                    # Select the kth smallest square x-differences
+                    f = 100  # factor of sample points to be selected
+                    k = int(1 / (self.increment * f))
+                    idx = np.argpartition(dx_sq, k)[:k]  # indices of the first k smallest points
+
+                    kmeans = False
+                    if kmeans:
+                        rotated_next_coord_candidates = rotated_next_coord.T[idx]
+
+                        dy_sq_candidates = dy_sq[idx]
+                        dy_sq_candidates_dict = {dy_sq[i]: i for i in idx}
+
+                        # Partition the smallest square x-difference points into two clusters
+                        # TODO: add algorithm to choose whether to use 1 or 2 clusters
+                        clustering_labels = KMeans(n_clusters=2).fit_predict(rotated_next_coord_candidates)
+                        index_cluster_1 = index_cluster_2 = []
+                        for j, l in enumerate(clustering_labels):
+                            if l:
+                                index_cluster_1.append(dy_sq_candidates_dict[dy_sq_candidates[j]])
+                            else:
+                                index_cluster_2.append(dy_sq_candidates_dict[dy_sq_candidates[j]])
+
+                        # Calculate mean square y-difference for each cluster, selecting the one with minimum difference
+                        mean_dy_sq_cluster_1 = np.mean(dy_sq[index_cluster_1])
+                        mean_dy_sq_cluster_2 = np.mean(dy_sq[index_cluster_2])
+                        index_cluster = index_cluster_1 if mean_dy_sq_cluster_1 < mean_dy_sq_cluster_2 \
+                            else index_cluster_2
+
+                        index_cluster_dict = {dx_sq[i]: i for i in index_cluster}
+
+                        # Finally, retrieve minimum index
+                        min_index = index_cluster_dict[np.min(dx_sq[index_cluster])]
+                        secondary_map.append(min_index)
+                    else:
+                        # Partition these points into two classes: ones with high y-differences, and with low
+                        # y-differences
+                        dy_sq_candidates = dy_sq[idx]
+                        idy = np.argwhere(dy_sq < np.mean(dy_sq_candidates)).flatten()
+
+                        # Remove the indices that correspond to the highest (above mean) squared y-differences, keeping
+                        # the order of the indices such that they correspond to the
+                        idxy = np.intersect1d(idx, idy)
+                        dict_dx_sq_candidates = {dx_sq[i]: i for i in idxy}
+                        idxy = [dict_dx_sq_candidates[i] for i in np.sort(dx_sq[idxy])]  # sort indices
+
+                        secondary_map.append(idxy[0])
                 secondary_maps.append(secondary_map)
+                print("#")
             self.secondary_maps_list.append(np.array(secondary_maps))
 
-    def apply_secondary_map(self, which, point):
+    def apply_secondary_map(self, coords_list):
+        """TODO: add docstring"""
 
-        pass
+        # WARNING: secondary maps are non-bijective
+
+        # Apply the map for each pair (x, y) where x and y are lists respectively
+        # TODO: figure out, maybe, if the next contour is mapping onto the current instead of the opposite
+        new_coords_list = []
+        for i, coords in enumerate(coords_list):
+            new_coords = [coords[0]]
+            for frame, coord in enumerate(coords[1:]):
+                new_coord = [coord[:, new_index] for new_index in self.secondary_maps_list[i][frame]]  # apply map
+                new_coords.append(np.transpose(new_coord))
+            new_coords_list.append(np.array(new_coords))
+
+        return new_coords_list
 
     def load_secondary_map(self):
         """TODO: add docstring"""
         pass
-
