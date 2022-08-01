@@ -14,7 +14,8 @@ from shapely.geometry.polygon import Polygon
 from sklearn.cluster import KMeans
 
 # Set font parameters for plots
-plt.rcParams["font.family"] = "Serif"
+plt.rcParams['font.family'] = 'Serif'
+plt.rcParams['mathtext.fontset'] = 'cm'
 plt.rcParams.update({'font.size': 10})
 
 
@@ -487,7 +488,8 @@ class Spline:
         plt.savefig(f'Output Images/Kymographs/{file_name}_{which}_vel.png')
         print('(Done)')
 
-    def create_curvature_velocity_plot(self, which, point, file_name, d_velocity_approx=0, secondary_map=False):
+    def create_curvature_velocity_plot(self, which, point, file_name, d_velocity_approx=0, averages=False,
+                                       secondary_map=False):
         """TODO: add docstring"""
 
         plt.figure()
@@ -499,40 +501,81 @@ class Spline:
             vel_next = np.roll(velocities, d_velocity_approx)[d_velocity_approx:]
             velocities = (vel_inst + vel_next) / (d_velocity_approx + 1)
         curvatures = np.array(self.curvatures_list[which])[:-(1 + d_velocity_approx)]
-        plt.xlim(np.min(curvatures[:, point]), np.max(curvatures[:, point]))
 
-        plt.title(f'Point {point} of Contour {which} across Time')
-        plt.xlabel('Curvature')
-        plt.ylabel(r'Velocity ($\mathrm{nm}\;\mathrm{s}^{-1}$)')
-        plt.scatter(curvatures[:, point], velocities[:, point], marker='.', color='#000000', label='Spline data')
+        if averages:
+            avg_curvature = np.mean(curvatures, axis=0)
+            avg_velocity = np.mean(velocities, axis=0)
+            plt.xlim(np.min(avg_curvature), np.max(avg_curvature))
 
-        # Linear fit
-        degree = 1
-        fit, cvm = np.polyfit(curvatures[:, point], velocities[:, point], degree, cov=True)
-        dfit = [np.sqrt(cvm[i, i]) for i in range(2)]
-        fitted = fit[0] * curvatures[:, point] + fit[1]
+            plt.title(f'Points on Contour {which} across Time')
+            plt.xlabel('Average Curvature')
+            plt.ylabel(r'Average Velocity ($\mathrm{nm}\;\mathrm{s}^{-1}$)')
+            plt.scatter(avg_curvature, avg_velocity, marker='.', color='#000000', label='Spline data', s=2)
 
-        endpoint_curvatures = np.r_[np.min(curvatures[:, point]), curvatures[:, point], np.max(curvatures[:, point])]
-        fitted_max = (fit[0] + dfit[0]) * endpoint_curvatures + (fit[1] + dfit[1])
-        fitted_min = (fit[0] - dfit[0]) * endpoint_curvatures + (fit[1] - dfit[1])
+            # Linear fit
+            degree = 1
+            fit, cvm = np.polyfit(avg_curvature, avg_velocity, degree, cov=True)
+            dfit = [np.sqrt(cvm[i, i]) for i in range(2)]
+            fitted = fit[0] * avg_curvature + fit[1]
 
-        # Calculate coefficient of determination
-        p = np.poly1d(fit)
-        y_hat = p(curvatures[:, point])
-        y_bar = np.mean(velocities[:, point])
-        ss_reg = np.sum((y_hat - y_bar) ** 2)
-        ss_tot = np.sum((velocities[:, point] - y_bar) ** 2)
-        r_sq = ss_reg / ss_tot
+            endpoint_curvatures = np.r_[np.min(avg_curvature),
+                                        avg_curvature, np.max(avg_curvature)]
+            fitted_max = (fit[0] + dfit[0]) * endpoint_curvatures + (fit[1] + dfit[1])
+            fitted_min = (fit[0] - dfit[0]) * endpoint_curvatures + (fit[1] - dfit[1])
 
-        # Plot linear fit
-        plt.plot(curvatures[:, point], fitted, color='orange', label=f'Linear fit: $R^2 = {r_sq:0.5f}$')
+            # Calculate coefficient of determination
+            p = np.poly1d(fit)
+            y_hat = p(avg_curvature)
+            y_bar = np.mean(avg_velocity)
+            ss_reg = np.sum((y_hat - y_bar) ** 2)
+            ss_tot = np.sum((avg_velocity - y_bar) ** 2)
+            r_sq = ss_reg / ss_tot
+
+            # Plot linear fit
+            plt.plot(avg_curvature, fitted, color='orange', label=f'Linear fit: $R^2 = {r_sq:0.5f}$')
+
+            print(f'\nSaving average curvature/velocity plot of contour {which}...'
+                  f' (Output Images/Curvature with Velocity/{file_name}_{which}_avg.png)...', end=' ')
+        else:
+            plt.xlim(np.min(curvatures[:, point]), np.max(curvatures[:, point]))
+
+            plt.title(f'Point {point} of Contour {which} across Time')
+            plt.xlabel('Curvature')
+            plt.ylabel(r'Velocity ($\mathrm{nm}\;\mathrm{s}^{-1}$)')
+            plt.scatter(curvatures[:, point], velocities[:, point], marker='.', color='#000000', label='Spline data')
+
+            # Linear fit
+            degree = 1
+            fit, cvm = np.polyfit(curvatures[:, point], velocities[:, point], degree, cov=True)
+            dfit = [np.sqrt(cvm[i, i]) for i in range(2)]
+            fitted = fit[0] * curvatures[:, point] + fit[1]
+
+            endpoint_curvatures = np.r_[np.min(curvatures[:, point]), curvatures[:, point],
+                                        np.max(curvatures[:, point])]
+            fitted_max = (fit[0] + dfit[0]) * endpoint_curvatures + (fit[1] + dfit[1])
+            fitted_min = (fit[0] - dfit[0]) * endpoint_curvatures + (fit[1] - dfit[1])
+
+            # Calculate coefficient of determination
+            p = np.poly1d(fit)
+            y_hat = p(curvatures[:, point])
+            y_bar = np.mean(velocities[:, point])
+            ss_reg = np.sum((y_hat - y_bar) ** 2)
+            ss_tot = np.sum((velocities[:, point] - y_bar) ** 2)
+            r_sq = ss_reg / ss_tot
+
+            # Plot linear fit
+            plt.plot(curvatures[:, point], fitted, color='orange', label=f'Linear fit: $R^2 = {r_sq:0.5f}$')
+
+            print(f'\nSaving curvature/velocity plot of contour {which} at point {point}/{int(1 / self.increment)}...'
+                  f' (Output Images/Curvature with Velocity/{file_name}_{which}_{point}.png)...', end=' ')
+
         plt.fill_between(endpoint_curvatures, fitted_min, fitted_max, alpha=0.2, color='orange',
                          label='Confidence interval at 1-sigma')
         plt.legend()
 
-        print(f'\nSaving curvature/velocity plot of contour {which} at point {point}/{int(1 / self.increment)}...'
-              f' (Output Images/Curvature with Velocity/{file_name}_{which}_{point}.png)...', end=' ')
-        plt.savefig(f'Output Images/Curvature with Velocity/{file_name}_{which}_{point}.png', dpi=300)
+        file_path = f'Output Images/Curvature with Velocity/{file_name}_{which}_avg.png' if averages \
+            else f'Output Images/Curvature with Velocity/{file_name}_{which}_{point}.png'
+        plt.savefig(file_path, dpi=300)
         print('(Done)')
 
     # -------------------------------- Mapping Methods --------------------------------

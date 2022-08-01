@@ -10,7 +10,8 @@ RED = [1.0, 0.0, 0.0]
 NOBLUE_MORERED = [0.644, 0.356, 0]
 
 # Set font parameters for plots
-plt.rcParams["font.family"] = "Serif"
+plt.rcParams['font.family'] = 'Serif'
+plt.rcParams['mathtext.fontset'] = 'cm'
 plt.rcParams.update({'font.size': 10})
 
 # Create a save auxiliary figures
@@ -62,12 +63,12 @@ def transmembrane_defects(stack):
     # stack.track_contour((57, 1)) # FIND THE BIG ONE!!!
 
     # Create spline object
-    spline = ps.Spline(stack, secondary_map='normal', increment=0.0025)
+    spline = ps.Spline(stack, increment=0.0005)
 
-    # # Create curvature-velocity diagram
-    # spline.create_curvature_velocity_plot(0, 0, 'trans', d_velocity_approx=0)
-    # spline.create_curvature_velocity_plot(0, 0, 'trans_dvel', d_velocity_approx=1)
-    # spline.create_curvature_velocity_plot(0, 1910, 'trans')
+    # Create curvature-velocity diagram
+    spline.create_curvature_velocity_plot(0, 0, 'trans', averages=True)
+    spline.create_curvature_velocity_plot(1, 0, 'trans', averages=True)
+    spline.create_curvature_velocity_plot(2, 0, 'trans', averages=True)
 
     # # Animate the spline with curvature
     # spline.animate_spline(0, 'trans', sigma=1.2, start=0)
@@ -87,13 +88,13 @@ def transmembrane_defects(stack):
     # spline.compare_splines(1, (11, 12), 'trans')
     # spline.compare_splines(1, (12, 13), 'trans')
 
-    for i in range(len(spline.tracked[0]) - 1):
-        spline.compare_splines(0, (i, i + 1), 'trans')
-        spline.compare_splines(0, (i, i + 1), 'trans', secondary_map=True)
-
-    for i in range(len(spline.tracked[1]) - 1):
-        spline.compare_splines(1, (i, i + 1), 'trans')
-        spline.compare_splines(1, (i, i + 1), 'trans', secondary_map=True)
+    # for i in range(len(spline.tracked[0]) - 1):
+    #     spline.compare_splines(0, (i, i + 1), 'trans')
+    #     spline.compare_splines(0, (i, i + 1), 'trans', secondary_map=True)
+    #
+    # for i in range(len(spline.tracked[1]) - 1):
+    #     spline.compare_splines(1, (i, i + 1), 'trans')
+    #     spline.compare_splines(1, (i, i + 1), 'trans', secondary_map=True)
 
     # # Create kymographs
     # spline.create_curvature_kymograph(0, 'trans', hline=1910)
